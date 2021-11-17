@@ -8,25 +8,24 @@
 #define _LOCKDETAILS_H_
 
 #include <vector>
-#include <queue>
 #include "transaction.h"
 
 class lockDetails
 {
     /* 0 is free, 1 is read lock, 2 is write lock */
     int type;
-    vector<transaction> owners;
-    queue<transaction> waitingQueue;
+    vector<transaction* > owners;
+    vector<transaction* > waitingQueue;
 
 public:
     /* returns lock type */
     int getType();
 
     /* returns owners */
-    vector<transaction> getOwners();
+    vector<transaction* > getOwners();
 
     /* returns waiting queue */
-    queue<transaction> getWaitingQueue();
+    vector<transaction* > getWaitingQueue();
 
     /* set lock type to free (0) */
     void freeLock();
@@ -38,16 +37,19 @@ public:
     void writeLock();
 
     /* add a transaction as an owner to the owners vector */
-    void addOwner(transaction t);
+    void addOwner(transaction* t);
 
     /* remove a transaction as an owner from the owners vector */
-    void removeOwner(transaction t);
+    void removeOwner(transaction* t);
 
     /* add a transaction to waiting queue */
-    void addTransactionToWaitingQueue(transaction t);
+    void addTransactionToWaitingQueue(transaction* t);
 
     /* remove a transaction from waiting queue */
-    void removeTransactionFromWaitingQueue(transaction t);
+    void removeTransactionFromWaitingQueue(transaction* t);
+
+    /* gets the first transaction queued at the waiting queue */
+    transaction* getTransactionFromWaitingQueue();
 }
 
 #endif
