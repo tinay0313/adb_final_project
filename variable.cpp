@@ -1,13 +1,19 @@
+/** @file variable.cpp
+    @author Tina Yuan thy258
+    The file provides the constructor for the variable class.
+ */
+
+
 #include "lockDetails.h"
 #include "variable.h"
 
 using namespace std;
 
-class variable
+/* variable Constructor */
+variable::variable(string name, int value)
 {
-    string name;
-    int value;
-    bool isReplicated;
-    bool readable;
-    lockDetails lock;
+    variable::setName(name);
+    variable::setValue(value);
+    variable::setIsReplicatedFalse();
+    variable::setReadableTrue();
 }
