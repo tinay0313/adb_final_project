@@ -3,8 +3,6 @@
     The file provides the constructor for the variable class.
  */
 
-
-#include "lockDetails.h"
 #include "variable.h"
 
 using namespace std;

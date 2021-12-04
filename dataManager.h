@@ -19,25 +19,26 @@ class dataManager {
     /* list of all 10 sites */
     vector<site* > sites;
 
-    /* key is the variable, value is all the sites the variable is saved at */
-    unordered_map<variable, vector<site* >> varSiteList;
+    /* key is the variable id, value is all the sites the variable is saved at */
+    unordered_map<int, vector<site* >> varSiteList;
 
 public:
     /* returns all sites managed by dataManager */
     vector<site* > getSites() { return sites; }
 
-    /* returns map of key being variables and values being the sites the variable
+    /* returns map of key being variable id and values being the sites the variable
         is saved at */
-    unordered_map<variable, vector<site* >> getVarSiteList() { return varSiteList; }
+    unordered_map<int, vector<site* >> getVarSiteList() { return varSiteList; }
     
     /* prints out the commited values of all copies of all variables at all sites,
         sorted per site with all values per site in ascending order by variable name. */
     void dump();
     
     /* fail a running site */
-    void fail(site site, int timestamp);
+    void fail(int site_id);
+    
     /* recover a failed site */
-    void recover(site site);
+    void recover(int site_id);
 };
 
 #endif

@@ -11,6 +11,7 @@
 #include "variable.h"
 #include <ctime>
 #include <unordered_map>
+#include <map>
 #include <vector>
 
 using namespace std;
@@ -22,7 +23,7 @@ class site {
 	bool isRecovered;
 	time_t timestamp;
 	/* key is variable id, value is variable */
-	unordered_map<int, variable> variableList;
+	map<int, variable> variableList;
 	/* key is variable id, value is lock(s), where the locks keep track of the owners (of type transaction)
 	   of the lock, the waiting queue, and the current lock type */
 	unordered_map<int, lockDetails> lockTable;
@@ -57,7 +58,7 @@ public:
 	void setIsRecoveredFalse() { isRecovered = false; }
 
 	/* returns all variables */
-	unordered_map<int, variable> getAllVariables() { return variableList; }
+	map<int, variable> getAllVariables() { return variableList; }
 
 	/* return variable as identified by input parameter id */
 	variable getVariable(int id) { return variableList[id]; }

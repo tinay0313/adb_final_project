@@ -34,6 +34,7 @@ site::site(int id)
     }
 }
 
+// site member functions
 /* fails the site and clear the lock table. Adds timestamp to failedTimes vector */
 void site::failSite()
 {
