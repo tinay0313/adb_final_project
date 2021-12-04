@@ -28,6 +28,9 @@ public:
     /* returns waiting queue */
     vector<transaction* > getWaitingQueue() { return waitingQueue; }
 
+    /* returns true if lock is free (type == 0) and false otherwise */
+    bool isFree() { return type == 0; }
+
     /* adds a lock indicated by lockType to the variable and indicate that transaction
        t is the owner */
     void addLock(transaction* t, int lockType);

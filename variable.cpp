@@ -10,10 +10,11 @@
 using namespace std;
 
 /* variable Constructor */
-variable::variable(string name, int value)
+variable::variable(int i, int value)
 {
-    variable::setName(name);
+    this->idx = idx;
+    this->name = "x" + to_string(idx);
+    this->isReplicated = false;
     variable::setValue(value);
-    variable::setIsReplicatedFalse();
     variable::setReadableTrue();
 }

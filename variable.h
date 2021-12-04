@@ -13,6 +13,7 @@
 class variable
 {
     string name;
+    int idx;
     int value;
     bool isReplicated;
     bool readable;
@@ -21,6 +22,9 @@ class variable
 public:
     /* return variable name */ 
     string getName() { return name; }
+
+    /* return variable name's index value */ 
+    int getIdx() { return idx; }
 
     /* return variable value */
     int getValue() { return value; }
@@ -34,20 +38,14 @@ public:
     /* return lock */
     lockDetails getLock() { return lock; }
 
-    /* sets isReplicated to true, default value is false */
+    /* sets isReplicated to true, default value upon variable construction is false */
     void setIsReplicatedTrue() { isReplicated = true; }
 
-    /* sets readable to true, default value is true */
+    /* sets readable to true, default value upon variable construction is true */
     void setReadableTrue() { readable = true; }
 
-    /* sets isReplicated to false, default value is false */
-    void setIsReplicatedFalse() { isReplicated = false; }
-
-    /* sets readable to false, default value is true */
+    /* sets readable to false, default value upon variable construction is true */
     void setReadableFalse() { readable = false; }
-    
-    /* sets variable name */
-    void setName(string name) { this->name = name; }
 
     /* sets variable value */
     void setValue(int value) { this->value = value; }

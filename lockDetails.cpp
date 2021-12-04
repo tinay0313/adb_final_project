@@ -19,33 +19,33 @@ lockDetails::lockDetails()
    trans is the owner */
 void lockDetails::addLock(transaction* t, int lockType)
 {
-    self.owners.insert(t);
-    self.type = lockType;
+    this->owners.insert(t);
+    this->type = lockType;
 }
 
 /* removes a lock to the variable held by transaction t */
 void lockDetails::removeLock(transaction* t)
 {
-    auto it = self.owners.find(t);
-    if(it != self.owners.end()) {
+    auto it = this->owners.find(t);
+    if(it != this->owners.end()) {
         //transaction is in owners set
-        self.owners.erase(it);
+        this->owners.erase(it);
     }
     //free the lock
-    self.type = 0;
+    this->type = 0;
 
 }
 
 /* add a transaction as an owner to the owners vector */
 void lockDetails::addOwner(transaction* t)
 {
-    self.owners.insert(t);
+    this->owners.insert(t);
 }
 
 /* remove a transaction as an owner from the owners vector */
 void lockDetails::removeOwner(transaction* t)
 {
-    self.owners.erase(t);
+    this->owners.erase(t);
 }
 
 /* add a transaction to waiting queue */
