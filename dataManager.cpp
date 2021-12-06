@@ -52,11 +52,11 @@ void dataManager::dump()
 }
 
 /* fail a running site */
-void dataManager::fail(int site_id)
+void dataManager::fail(int site_id, int timestamp)
 {
     site* s = sites[site_id - 1];
     if(s->getIsRunning()) {
-        s->failSite();
+        s->failSite(timestamp);
         printf("Site %d is down now\n", site_id);
     } else {
         printf("Site %d is already down\n", site_id);
@@ -79,22 +79,33 @@ void dataManager::recover(int site_id)
    when attempting to read from the database
    if can get read locks then return list of site numbers,
    otherwise return blockers */
-vector<int> dataManager::read(transaction* t, int var_id)
+string dataManager::read(transaction* t, int var_id)
 {
-    
+    //read lock variables that can be read locked
+    //(lock was previously free or read)
+    //and lock them
+    //use canReadVar to verify if can read or not
+    //update site lock table
+    //return string DOWN, CONFLICT, value as a string
 }
 
 /* determines whether a transaction t can get the requested lock
    when attempting to write to the database
    if can get write locks then return list of site numbers,
    otherwise return blockers */
-vector<int> dataManager::write(transaction* t, int var_id)
+string dataManager::write(transaction* t, int var_id)
 {
-    
+    //write lock variables that can be write locked
+    //(lock was previously free)
+    //and lock them
+    //update site lock table
+    //site s -> lockTable displays that var_id is free then i will write lock
+    //return string DOWN, CONFLICT, variable_id as a string
+    //return conflict if can only get locks to some sites but not all
 }
 
 /* commit a transaction */
-void dataManager::commit(transaction* t, unordered_map<int,int> variableValueMap)
+void dataManager::commit(transaction* t)
 {
     if(variableValueMap.size() == 0) {
         printf("Transaction %d has nothing to commit.\n", t.id);
@@ -107,19 +118,23 @@ void dataManager::commit(transaction* t, unordered_map<int,int> variableValueMap
             printf("Transaction %d changed variable %d's value to %d\n", t.id, var_id, var_value);
         }
     }
+    releaseLocks(t);
 }
 
 /* writes the value to the variable that are stored in running
    sites. Function called upon commit */
-void dataManager::writeValueToSite(int var_id, int value)
+void dataManager::writeValueToSite(transaction* t, int var_id, int value)
 {
     vector<site*> sites = this->varSiteList[var_id];
     for(auto s : sites) {
-        if(s->getIsRunning()) {
+        //check that transaction t has write lock on variable in site s's lockTable
+        if(s->getIsRunning() ) {
             s->setVariableValue(var_id, value);
         }
     }
 }
+
+void dataManager::printAffectedSites();
 
 /* release locks after transaction commits or aborts.
    return list of variables that become free after locks are released */

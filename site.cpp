@@ -14,7 +14,7 @@ site::site(int id)
     this->id = id;
     setIsRunningTrue();
     setIsRecoveredFalse();
-    this->timestamp = time(0);
+    this->timestamp = 0;
     // create variables stored in site
     for(int i = 1; i <= 20; ++i) {
         variable v = new variable(i, 10 * i);
@@ -36,10 +36,10 @@ site::site(int id)
 
 // site member functions
 /* fails the site and clear the lock table. Adds timestamp to failedTimes vector */
-void site::failSite()
+void site::failSite(int timestamp)
 {
-    failedTimes.push_back(time(0));
-    setIsRunningFalse;
+    failedTimes.push_back(timestamp);
+    setIsRunningFalse();
     setIsRecoveredFalse();
     this->lockTable.clear();
     for(auto it = this->canReadVar.begin(); it != this->canReadVar.end(); ++it) {
@@ -50,7 +50,6 @@ void site::failSite()
 /*recovers the site and initializes lock table */
 void site::recoverSite()
 {
-    this->timestamp = time(0);
     setIsRecoveredTrue();
     setIsRunningTrue();
     for(auto it = this->variableList.begin(); it != this->variableList.end(); ++it) {

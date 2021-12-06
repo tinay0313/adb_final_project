@@ -82,7 +82,7 @@ public:
 	void setVariableValue (int id, int val) { variableList[id].setValue(val); }
 
 	/* fails the site and clear the lock table. Adds timestamp to failedTimes vector */
-	void failSite();
+	void failSite(int timestamp);
 
 	/*recovers the site and initializes lock table */
 	void recoverSite();
