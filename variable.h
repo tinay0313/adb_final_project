@@ -20,6 +20,9 @@ class variable
     lockDetails lock;
 
 public:
+    /* constructor */
+    variable(int i, int value);
+    
     /* return variable name */ 
     string getName() { return name; }
 

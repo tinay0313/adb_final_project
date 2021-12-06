@@ -42,16 +42,16 @@ void dataManager::dump()
         if(s->getIsRunning()) {
             //site i is up
             printf("Site %d: \n", s->getSiteId());
-            map<int, variable> variables = s->getAllVariables();
+            map<int, variable*> variables = s->getAllVariables();
             for(auto it = variables.begin(); it != variables.end(); ++it) {
-                variable v = it->second;
-                printf("Variable: %d | Value: %d\n", it->first, v.getValue());
+                variable* v = it->second;
+                printf("Variable: %d | Value: %d\n", it->first, v->getValue());
             }
         }
     }
 }
 
-/* fail a running site */
+/* fail a running site and record its failed time as timestamp */
 void dataManager::fail(int site_id, int timestamp)
 {
     site* s = sites[site_id - 1];
@@ -79,7 +79,7 @@ void dataManager::recover(int site_id)
    when attempting to read from the database
    if can get read locks then return list of site numbers,
    otherwise return blockers */
-string dataManager::read(transaction* t, int var_id)
+string dataManager::read(Transaction* t, int var_id)
 {
     //read lock variables that can be read locked
     //(lock was previously free or read)
@@ -93,7 +93,7 @@ string dataManager::read(transaction* t, int var_id)
    when attempting to write to the database
    if can get write locks then return list of site numbers,
    otherwise return blockers */
-string dataManager::write(transaction* t, int var_id)
+string dataManager::write(Transaction* t, int var_id)
 {
     //write lock variables that can be write locked
     //(lock was previously free)
@@ -105,17 +105,17 @@ string dataManager::write(transaction* t, int var_id)
 }
 
 /* commit a transaction */
-void dataManager::commit(transaction* t)
+void dataManager::commit(Transaction* t)
 {
     if(variableValueMap.size() == 0) {
-        printf("Transaction %d has nothing to commit.\n", t.id);
+        printf("Transaction %s has nothing to commit.\n", t->name);
     } else {
         // commit all the values in the map
         for(auto it = variableValueMap.begin(); it != variableValueMap.end(); ++it) {
             int var_id = it->first;
             int var_value = it->second;
-            this->writeValueToSite(var_id, var_value);
-            printf("Transaction %d changed variable %d's value to %d\n", t.id, var_id, var_value);
+            this->writeValueToSite(t, var_id, var_value);
+            printf("Transaction %s changed variable %d's value to %d\n", t->name, var_id, var_value);
         }
     }
     releaseLocks(t);
@@ -123,22 +123,36 @@ void dataManager::commit(transaction* t)
 
 /* writes the value to the variable that are stored in running
    sites. Function called upon commit */
-void dataManager::writeValueToSite(transaction* t, int var_id, int value)
+void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
 {
     vector<site*> sites = this->varSiteList[var_id];
+    vector<int> affected_sites;
     for(auto s : sites) {
         //check that transaction t has write lock on variable in site s's lockTable
         if(s->getIsRunning() ) {
             s->setVariableValue(var_id, value);
+            affected_sites.push_back(s->getSiteId());
         }
+    }
+    printAffectedSites(affected_sites);
+}
+
+void dataManager::printAffectedSites(vector<int>& affected_sites)
+{
+    if(affected_sites.size() == 0) {
+        cout << "No sites were affected by this transaction" << endl;
+    } else {
+        cout << "Sites ";
+        for(int i = 0; i < affected_sites.size() - 1; ++i) {
+            cout << affected_sites[i] << ", ";
+        }
+        cout << affected_sites.back() << " were affected by this transaction" << endl;
     }
 }
 
-void dataManager::printAffectedSites();
-
 /* release locks after transaction commits or aborts.
    return list of variables that become free after locks are released */
-unordered_set<int> dataManager::releaseLocks(transaction* t)
+unordered_set<int> dataManager::releaseLocks(Transaction* t)
 {
     unordered_set<int> freeVariables;
     for(auto var_id : t->LIST_OF_VARIABLES_LOCKED_BY_T) {

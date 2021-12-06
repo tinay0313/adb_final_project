@@ -17,14 +17,14 @@ lockDetails::lockDetails()
 //lockDetails member functions
 /* adds a lock indicated by lockType to the variable and indicate that transaction
    trans is the owner */
-void lockDetails::addLock(transaction* t, int lockType)
+void lockDetails::addLock(Transaction* t, int lockType)
 {
     this->owners.insert(t);
     this->type = lockType;
 }
 
 /* removes a lock to the variable held by transaction t */
-void lockDetails::removeLock(transaction* t)
+void lockDetails::removeLock(Transaction* t)
 {
     auto it = this->owners.find(t);
     if(it != this->owners.end()) {
@@ -37,34 +37,34 @@ void lockDetails::removeLock(transaction* t)
 }
 
 /* add a transaction as an owner to the owners vector */
-void lockDetails::addOwner(transaction* t)
+void lockDetails::addOwner(Transaction* t)
 {
     this->owners.insert(t);
 }
 
 /* remove a transaction as an owner from the owners vector */
-void lockDetails::removeOwner(transaction* t)
+void lockDetails::removeOwner(Transaction* t)
 {
     this->owners.erase(t);
 }
 
 /* add a transaction to waiting queue */
-void lockDetails::addTransactionToWaitingQueue(transaction* t)
+void lockDetails::addTransactionToWaitingQueue(Transaction* t)
 {
     waitingQueue.push_back(t);
 }
 
 /* remove a transaction from waiting queue */
-void lockDetails::removeTransactionFromWaitingQueue(transaction* t)
+void lockDetails::removeTransactionFromWaitingQueue(Transaction* t)
 {
     waitingQueue.erase(t);
 }
 
 /* gets the first transaction queued at the waiting queue 
     and pops it from the queue */
-transaction* lockDetails::getTransactionFromWaitingQueue()
+Transaction* lockDetails::getTransactionFromWaitingQueue()
 {
-    transaction* t = waitingQueue.front();
+    Transaction* t = waitingQueue.front();
     waitingQueue.erase(waitingQueue.begin());
     return t;
 }

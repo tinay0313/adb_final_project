@@ -9,7 +9,7 @@
 
 #include "lockDetails.h"
 #include "variable.h"
-#include <ctime>
+#include "Transaction.h"
 #include <unordered_map>
 #include <map>
 #include <vector>
@@ -21,18 +21,21 @@ class site {
 	int id;
 	bool isRunning;
 	bool isRecovered;
-	time_t timestamp;
+	int timestamp;
 	/* key is variable id, value is variable */
-	map<int, variable> variableList;
+	map<int, variable*> variableList;
 	/* key is variable id, value is lock(s), where the locks keep track of the owners (of type transaction)
 	   of the lock, the waiting queue, and the current lock type */
-	unordered_map<int, lockDetails> lockTable;
+	unordered_map<int, lockDetails*> lockTable;
 	/* key is variable id, value is whether or not variable can be read (boolean) */
 	unordered_map<int, bool> canReadVar;
 	/* will record the timestamp upon site failure */
 	vector<time_t> failedTimes;
 
 public:
+	/* constructor */
+	site(int id);
+
 	/* returns site id */
 	int getSiteId() { return id; }
 
@@ -58,13 +61,13 @@ public:
 	void setIsRecoveredFalse() { isRecovered = false; }
 
 	/* returns all variables */
-	map<int, variable> getAllVariables() { return variableList; }
+	map<int, variable*> getAllVariables() { return variableList; }
 
 	/* return variable as identified by input parameter id */
-	variable getVariable(int id) { return variableList[id]; }
+	variable* getVariable(int id) { return variableList[id]; }
 
 	/* return lock type of lock that is currently enforced on variable as identified by input parameter id */
-	int getLockType(int id) { return lockTable[id].getType(); }
+	int getLockType(int id) { return lockTable[id]->getType(); }
 
 	/* returns true if variable identified by input parameter id is free and false otherwise */
 	bool isVariableFree(int id) { return getLockType(id) == 0; }
@@ -73,13 +76,13 @@ public:
 	bool isVariableValidForRead(int id) { return canReadVar[id]; }
 
 	/* add a lock to the variable as identified by input parameter id */
-	void lockVariable(int id, transaction* t, int lockType) { lockTable[id].addLock(t, lockType); }
+	void lockVariable(int id, Transaction* t, int lockType) { lockTable[id]->addLock(t, lockType); }
 
 	/* remove lock imposed on the variable as identified by input parameter id by transaction t */
-	void unlockVariable(int id, transaction* t) { lockTable[id].removeLock(t); }
+	void unlockVariable(int id, Transaction* t) { lockTable[id]->removeLock(t); }
 
 	/* set variable value to val */
-	void setVariableValue (int id, int val) { variableList[id].setValue(val); }
+	void setVariableValue (int id, int val) { variableList[id]->setValue(val); }
 
 	/* fails the site and clear the lock table. Adds timestamp to failedTimes vector */
 	void failSite(int timestamp);
