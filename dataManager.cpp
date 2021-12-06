@@ -34,43 +34,111 @@ dataManager::dataManager()
 
 /* prints out the commited values of all copies of all variables at all sites, 
    sorted per site with all values per site in ascending order by variable name. */
-void dump()
+void dataManager::dump()
 {
     cout << "Current DataManager Phase:" << endl;
     for(int i = 0; i < sites.size(); ++i) {
         site* s = sites[i];
         if(s->getIsRunning()) {
             //site i is up
-            cout << "Site " << s->getSiteId() << ": " << endl;
+            printf("Site %d: \n", s->getSiteId());
             map<int, variable> variables = s->getAllVariables();
             for(auto it = variables.begin(); it != variables.end(); ++it) {
                 variable v = it->second;
-                cout << "Variable: " << it->first << " Value: " << v.getValue() << endl;
+                printf("Variable: %d | Value: %d\n", it->first, v.getValue());
             }
         }
     }
 }
 
 /* fail a running site */
-void fail(int site_id)
+void dataManager::fail(int site_id)
 {
     site* s = sites[site_id - 1];
     if(s->getIsRunning()) {
         s->failSite();
-        cout << "Site " << site_id << " is down now" << endl;
+        printf("Site %d is down now\n", site_id);
     } else {
-        cout << "Site " << site_id << " is already down" << endl;
+        printf("Site %d is already down\n", site_id);
     }
 }
 
 /* recover a failed site */
-void recover(int site_id)
+void dataManager::recover(int site_id)
 {
     site* s = sites[site_id - 1];
     if(s->getIsRunning()) {
-        cout << "Site " << site_id << " is already running" << endl;
+        printf("Site %d is already running\n", site_id);
     } else {
         s->recoverSite();
-        cout << "Site " << site_id << " is running now" << endl;
+        printf("Site %d is running now\n", site_id);
     }
+}
+
+/* determines whether a transaction t can get the requested lock
+   when attempting to read from the database
+   if can get read locks then return list of site numbers,
+   otherwise return blockers */
+vector<int> dataManager::read(transaction* t, int var_id)
+{
+    
+}
+
+/* determines whether a transaction t can get the requested lock
+   when attempting to write to the database
+   if can get write locks then return list of site numbers,
+   otherwise return blockers */
+vector<int> dataManager::write(transaction* t, int var_id)
+{
+    
+}
+
+/* commit a transaction */
+void dataManager::commit(transaction* t, unordered_map<int,int> variableValueMap)
+{
+    if(variableValueMap.size() == 0) {
+        printf("Transaction %d has nothing to commit.\n", t.id);
+    } else {
+        // commit all the values in the map
+        for(auto it = variableValueMap.begin(); it != variableValueMap.end(); ++it) {
+            int var_id = it->first;
+            int var_value = it->second;
+            this->writeValueToSite(var_id, var_value);
+            printf("Transaction %d changed variable %d's value to %d\n", t.id, var_id, var_value);
+        }
+    }
+}
+
+/* writes the value to the variable that are stored in running
+   sites. Function called upon commit */
+void dataManager::writeValueToSite(int var_id, int value)
+{
+    vector<site*> sites = this->varSiteList[var_id];
+    for(auto s : sites) {
+        if(s->getIsRunning()) {
+            s->setVariableValue(var_id, value);
+        }
+    }
+}
+
+/* release locks after transaction commits or aborts.
+   return list of variables that become free after locks are released */
+unordered_set<int> dataManager::releaseLocks(transaction* t)
+{
+    unordered_set<int> freeVariables;
+    for(auto var_id : t->LIST_OF_VARIABLES_LOCKED_BY_T) {
+        vector<site*> sites = this->varSiteList[var_id];
+        bool isFree = true;
+        for(auto s : sites) {
+            if(s->getIsRunning()) {
+                s->unlockVariable(var_id, t);
+                if(!s->isVariableFree(var_id)) {
+                    //variable should now be free at all sites it is stored at
+                    isFree = false;
+                }
+            }
+        }
+        if(isFree) freeVariables.insert(var_id);
+    }
+    return freeVariables;
 }
