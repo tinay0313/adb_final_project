@@ -128,10 +128,13 @@ void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
     vector<site*> sites = this->varSiteList[var_id];
     vector<int> affected_sites;
     for(auto s : sites) {
-        //check that transaction t has write lock on variable in site s's lockTable
-        if(s->getIsRunning() ) {
-            s->setVariableValue(var_id, value);
-            affected_sites.push_back(s->getSiteId());
+        if(s->getIsRunning()) {
+            lockDetails* lock = s->getLockTable()[var_id];
+            //check that transaction t has write lock on variable in site s's lockTable
+            if(lock->getOwners().count(t) && lock->getType() == 2) {
+                s->setVariableValue(var_id, value);
+                affected_sites.push_back(s->getSiteId());
+            }
         }
     }
     printAffectedSites(affected_sites);

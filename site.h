@@ -46,7 +46,10 @@ public:
 	bool getIsRecovered() { return isRecovered; }
 
 	/* returns timestamp */
-	time_t getTimestamp() { return timestamp; }
+	int getTimestamp() { return timestamp; }
+
+	/* returns lockTable */
+	unordered_map<int, lockDetails*> getLockTable() { return lockTable; }
 
 	/* sets isRunning to true, default value is true */
 	void setIsRunningTrue() { isRunning = true; }
