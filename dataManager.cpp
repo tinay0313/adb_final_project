@@ -38,7 +38,7 @@ void dataManager::dump()
 {
     cout << "DataManager dump:" << endl;
     for(int i = 0; i < sites.size(); ++i) {
-        site* s = sites[i];
+        site* s = this->sites[i];
         printf("site %d - ", s->getSiteId());
         map<int, variable*> variables = s->getAllVariables();
         for(auto it = variables.begin(); it != variables.end(); ++it) {
@@ -272,17 +272,20 @@ bool dataManager::commit(Transaction* t)
 
 bool dataManager::checkValidReadWrite(Transaction* t, int var_id, unordered_set<int>& sites_to_verify) {
     for(auto site_id : sites_to_verify) {
-        site* s = this->getSites()[site_id - 1];
+        site* s = this->sites[site_id - 1];
         if(s->getIsRunning()) {
             if(!s->getLockOwners(var_id).count(t)) {
                 //if transaction t doesn't own a lock for var_id at site s
-                //and should've owned that lock then transaction failed
+                //and should've owned that lock then transaction fails
+                //this'll happen if t obtained lock at site s and then
+                //site s failed and recovered before t commits
+                //t would then lose the lock it initially obtained on s
                 if(t->ownedLocks[var_id].count(s->getSiteId())) {
                     return false;
                 }
             }
         } else {
-            //transaction t wanted to acces a site that failed so transaction failed
+            //transaction t wants to acces a site that failed so transaction fails
             return false;
         }
     }
@@ -295,6 +298,16 @@ bool dataManager::checkValidReadWrite(Transaction* t, int var_id, unordered_set<
 void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
 {
     vector<site*> sites = this->varSiteList[var_id];
+    unordered_set<int> affected_sites = t->ownedLocks[var_id];
+    for(auto site_id : affected_sites) {
+        site* s = this->sites[site_id - 1];
+        if(s->getLockType(var_id) == 2) {
+            s->setVariableValue(var_id, value);
+            s->setCanReadVar(var_id, true);
+        }
+    }
+    vector<int> to_print_sites(affected_sites.begin(), affected_sites.end());
+    /*
     vector<int> affected_sites;
     for(auto s : sites) {
         if(s->getIsRunning()) {
@@ -306,6 +319,7 @@ void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
             }
         }
     }
+    */
     printAffectedSites(affected_sites);
 }
 
