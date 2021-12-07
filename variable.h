@@ -17,12 +17,12 @@ class variable
     int value;
     bool isReplicated;
     bool readable;
-    lockDetails lock;
+    lockDetails* lock;
 
 public:
     /* constructor */
     variable(int i, int value);
-    
+
     /* return variable name */ 
     string getName() { return name; }
 
@@ -39,7 +39,7 @@ public:
     bool getReadable() { return readable; }
 
     /* return lock */
-    lockDetails getLock() { return lock; }
+    lockDetails* getLock() { return lock; }
 
     /* sets isReplicated to true, default value upon variable construction is false */
     void setIsReplicatedTrue() { isReplicated = true; }
