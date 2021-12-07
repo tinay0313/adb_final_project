@@ -36,18 +36,20 @@ dataManager::dataManager()
    sorted per site with all values per site in ascending order by variable name. */
 void dataManager::dump()
 {
-    cout << "Current DataManager Phase:" << endl;
+    cout << "DataManager dump:" << endl;
     for(int i = 0; i < sites.size(); ++i) {
         site* s = sites[i];
-        if(s->getIsRunning()) {
-            //site i is up
-            printf("Site %d: \n", s->getSiteId());
-            map<int, variable*> variables = s->getAllVariables();
-            for(auto it = variables.begin(); it != variables.end(); ++it) {
-                variable* v = it->second;
-                printf("Variable: %d | Value: %d\n", it->first, v->getValue());
+        printf("site %d - ", s->getSiteId());
+        map<int, variable*> variables = s->getAllVariables();
+        for(auto it = variables.begin(); it != variables.end(); ++it) {
+            variable* v = it->second;
+            if(it == variables.begin()) {
+                printf("%s: %d", v->getName(), v->getValue());
+            } else {
+                printf(", %s: %d", v->getName(), v->getValue());
             }
         }
+        cout << endl;
     }
 }
 
