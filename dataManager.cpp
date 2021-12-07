@@ -75,6 +75,22 @@ void dataManager::recover(int site_id)
     }
 }
 
+void dataManager::generateVarValCache(Transaction* t)
+{
+    for(auto s : this->sites) {
+        if(s->getIsRunning()) {
+            map<int, variable*> variables = s->getAllVariables();
+            for(auto it = variables.begin(); it != variables.end(); ++it) {
+                int var_id = it->first;
+                if(s->isVariableValidForRead(var_id)) {
+                    int value = variables[var_id]->getValue();
+                    t->varValCache[var_id] = value;
+                }
+            }
+        }
+    }
+}
+
 /* puts read lock on variable if it can be read locked
    (aka lock was previously free or read)
    return DOWN if all sites that store the variable are down
@@ -83,39 +99,81 @@ void dataManager::recover(int site_id)
    of the variable */
 string dataManager::read(Transaction* t, int var_id)
 {
-    vector<site*> sites = this->varSiteList[var_id];
-    int num_sites = sites.size();
-    int down_sites = 0;
-    int invalid_read_sites = 0;
-    int trans_start_time = t->startTime;
-    for(auto s : sites) {
-        //increment down_sites if site s is down
-        if(!s->getIsRunning()) {
-            down_sites++;
-            continue;
-        }
-        //increment invalid_read_sites if variable not valid for read
-        //at site s
-        //a variable v at site s would be invalid read if it just recovered and
-        //v is a replicated variable and no new writes have been commited to v yet
-        if(!s->isVariableValidForRead(var_id)) {
-            invalid_read_sites++;
-            continue;
-        }
-        //check variable lock type
-        if(s->getLockType(var_id) != 2) {
-            if(!s->getVariable(var_id)->getIsReplicated()) {
-                //if variable isn't write locked and variable isn't replicated then can read variable
-                s->lockVariable(var_id, t, 1);
-                return to_string(s->getVariable(var_id)->getValue());
+    if(t->isReadOnly()) {
+        if(t->varValCache.empty()) {
+            //cache all variable values at start of RO transaction t
+            this->generateVarValCache(t);
+            if(t->varValCache.count(var_id)) {
+                return to_string(t->varValCache[var_id]);
+            } else {
+                //SHOULD TRANSACTION BE ADDED TO WAITING QUEUE TO WAIT FOR VALID SITES??
+                //transaction should abort
+                return "DOWN";
             }
         } else {
-            //variable has write lock so lock conflict
-            return "CONFLICT";
+            if(t->varValCache.count(var_id)) {
+                return to_string(t->varValCache[var_id]);
+            } else {
+                //transaction should abort
+                return "DOWN";
+            }
         }
+    } else {
+        //t is not RO transaction
+        vector<site*> sites = this->varSiteList[var_id];
+        unordered_set<site*> read_from;
+        int num_sites = sites.size();
+        int down_sites = 0;
+        int invalid_read_sites = 0;
+        int valid_read_sites = 0;
+        int trans_start_time = t->startTime;
+        for(auto s : sites) {
+            //increment down_sites if site s is down
+            if(!s->getIsRunning()) {
+                down_sites++;
+                continue;
+            }
+            //increment invalid_read_sites if variable not valid for read
+            //at site s
+            //a variable v at site s would be invalid read if site just recovered and
+            //v is a replicated variable and no new writes have been commited to v yet
+            //at site s
+            if(!s->isVariableValidForRead(var_id)) {
+                invalid_read_sites++;
+                continue;
+            }
+            //at this point, a variable may or may not be replicated
+            //but even if the variable is replicated, it is valid for read
+
+            if(s->getLockType(var_id) != 2) {
+                //if can read from a site, do we still need to read lock all sites that have this variable??
+                //i think the answer is yes
+                read_from.insert(s);
+            } else {
+                //variable is write-locked
+                if(s->getLockOwners(var_id).count(t)) {
+                    //write lock held by transaction t itself so can still read the value
+                    return to_string(s->getVariable(var_id)->getValue());
+                }
+                //write lock held by transaction that is not t so lock conflict
+                //and t has to wait
+                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+                return "CONFLICT";
+            }
+        }
+        //if some sites aren't down but just invalid reads, do we still return down????
+        //NEED TO ADD TO WAITING QUEUE???
+        //if(down_sites + invalid_read_sites == num_sites) return "DOWN";
+        if(down_sites == num_sites) return "DOWN";
+        //can obtain read locks at sites that are up and have valid, readable values
+        site* s = *(read_from.begin());
+        for(auto s : read_from) {
+            s->lockVariable(var_id, t, 1);
+        }
+        return to_string(s->getVariable(var_id)->getValue());
     }
-    //if some sites aren't down but just invalid reads, do we still return down????
-    return "DOWN";
+    
+    
 }
 
 /* determines whether a transaction t can get the requested lock
@@ -138,13 +196,22 @@ string dataManager::write(Transaction* t, int var_id)
             continue;
         }
         //if lock wasn't previously free then can't write to any of the site
+        //and t has to wait
         if(!s->isVariableFree(var_id)) {
+            if(s->getLockOwners(var_id).size() == 1 && s->getLockOwners(var_id).count(t)) {
+                //if previous read or write lock held by transaction t itself
+                //then can still write to the variable
+                write_to.insert(s);
+                continue;
+            }
+            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
             return "CONFLICT";
         }
         //can obtain write lock at site s
         write_to.insert(s);
     }
     //if all sites that store the variable are down then didn't write to any site
+    //DO WE NEED TO ADD TO WAITING QUEUE HERE??
     if(num_sites == down_sites) return "DOWN";
     //can obtain write locks to all sites that are up
     for(auto s : write_to) {

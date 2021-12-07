@@ -20,7 +20,7 @@ using namespace std;
 
 class dataManager {
     /* list of all 10 sites */
-    vector<site* > sites;
+    vector<site*> sites;
 
     /* key is the variable id, value is all the sites the variable is saved at */
     unordered_map<int, vector<site* >> varSiteList;
@@ -42,6 +42,8 @@ public:
     
     /* recover a failed site */
     void recover(int site_id);
+
+    void generateVarValCache(Transaction* t);
 
     /* puts read lock on variable if it can be read locked
        (aka lock was previously free or read)
