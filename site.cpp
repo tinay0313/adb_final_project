@@ -14,6 +14,7 @@ site::site(int id)
     this->id = id;
     setIsRunningTrue();
     setIsRecoveredFalse();
+    this->failedTimes.push_back(-1);
     this->timestamp = 0;
     // create variables stored in site
     for(int i = 1; i <= 20; ++i) {
@@ -42,8 +43,8 @@ void site::failSite(int timestamp)
     setIsRunningFalse();
     setIsRecoveredFalse();
     this->lockTable.clear();
-    for(auto it = this->canReadVar.begin(); it != this->canReadVar.end(); ++it) {
-        it->second = false;
+    for(auto it = this->variableList.begin(); it != this->variableList.end(); ++it) {
+        this->setCanReadVar(it->first, false);
     }
 }
 
@@ -61,9 +62,9 @@ void site::recoverSite()
         int var_id = it->first;
         bool var_valid = it->second;
         if(this->variableList[var_id]->getIsReplicated()) {
-            canReadVar[var_id] = false;
+            this->setCanReadVar(var_id, false);
         } else {
-            canReadVar[var_id] = true;
+            this->setCanReadVar(var_id, true);
         }
     }
 }

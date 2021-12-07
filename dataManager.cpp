@@ -75,33 +75,82 @@ void dataManager::recover(int site_id)
     }
 }
 
-/* determines whether a transaction t can get the requested lock
-   when attempting to read from the database
-   if can get read locks then return list of site numbers,
-   otherwise return blockers */
+/* puts read lock on variable if it can be read locked
+   (aka lock was previously free or read)
+   return DOWN if all sites that store the variable are down
+   return CONFLICT if one site has a write lock on the variable
+   return the variable's value as a string if can read an available copy
+   of the variable */
 string dataManager::read(Transaction* t, int var_id)
 {
-    //read lock variables that can be read locked
-    //(lock was previously free or read)
-    //and lock them
-    //use canReadVar to verify if can read or not
-    //update site lock table
-    //return string DOWN, CONFLICT, value as a string
+    vector<site*> sites = this->varSiteList[var_id];
+    int num_sites = sites.size();
+    int down_sites = 0;
+    int invalid_read_sites = 0;
+    int trans_start_time = t->startTime;
+    for(auto s : sites) {
+        //increment down_sites if site s is down
+        if(!s->getIsRunning()) {
+            down_sites++;
+            continue;
+        }
+        //increment invalid_read_sites if variable not valid for read
+        //at site s
+        //a variable v at site s would be invalid read if it just recovered and
+        //v is a replicated variable and no new writes have been commited to v yet
+        if(!s->isVariableValidForRead(var_id)) {
+            invalid_read_sites++;
+            continue;
+        }
+        //check variable lock type
+        if(s->getLockType(var_id) != 2) {
+            if(!s->getVariable(var_id)->getIsReplicated()) {
+                //if variable isn't write locked and variable isn't replicated then can read variable
+                s->lockVariable(var_id, t, 1);
+                return to_string(s->getVariable(var_id)->getValue());
+            }
+        } else {
+            //variable has write lock so lock conflict
+            return "CONFLICT";
+        }
+    }
+    //if some sites aren't down but just invalid reads, do we still return down????
+    return "DOWN";
 }
 
 /* determines whether a transaction t can get the requested lock
    when attempting to write to the database
-   if can get write locks then return list of site numbers,
-   otherwise return blockers */
+   return DOWN if all sites that store the variable are down
+   return CONFLICT if one site has a read or write lock on the variable
+   return the variable's id as a string if can write lock all available copies
+   of the variable */
 string dataManager::write(Transaction* t, int var_id)
 {
-    //write lock variables that can be write locked
-    //(lock was previously free)
-    //and lock them
-    //update site lock table
-    //site s -> lockTable displays that var_id is free then i will write lock
-    //return string DOWN, CONFLICT, variable_id as a string
-    //return conflict if can only get locks to some sites but not all
+    vector<site*> sites = this->varSiteList[var_id];
+    unordered_set<site*> write_to;
+    int num_sites = sites.size();
+    int down_sites = 0;
+    int valid_write_sites = 0;
+    for(auto s : sites) {
+        //increment down_sites if site s is down
+        if(!s->getIsRunning()) {
+            down_sites++;
+            continue;
+        }
+        //if lock wasn't previously free then can't write to any of the site
+        if(!s->isVariableFree(var_id)) {
+            return "CONFLICT";
+        }
+        //can obtain write lock at site s
+        write_to.insert(s);
+    }
+    //if all sites that store the variable are down then didn't write to any site
+    if(num_sites == down_sites) return "DOWN";
+    //can obtain write locks to all sites that are up
+    for(auto s : write_to) {
+        s->lockVariable(var_id, t, 2);
+    }
+    return to_string(var_id);
 }
 
 /* commit a transaction */
@@ -129,10 +178,10 @@ void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
     vector<int> affected_sites;
     for(auto s : sites) {
         if(s->getIsRunning()) {
-            lockDetails* lock = s->getLockTable()[var_id];
             //check that transaction t has write lock on variable in site s's lockTable
-            if(lock->getOwners().count(t) && lock->getType() == 2) {
+            if(s->getLockOwners(var_id).count(t) && s->getLockType(var_id) == 2) {
                 s->setVariableValue(var_id, value);
+                s->setCanReadVar(var_id, true);
                 affected_sites.push_back(s->getSiteId());
             }
         }
@@ -158,7 +207,7 @@ void dataManager::printAffectedSites(vector<int>& affected_sites)
 unordered_set<int> dataManager::releaseLocks(Transaction* t)
 {
     unordered_set<int> freeVariables;
-    for(auto var_id : t->LIST_OF_VARIABLES_LOCKED_BY_T) {
+    for(auto var_id : t->variableList) {
         vector<site*> sites = this->varSiteList[var_id];
         bool isFree = true;
         for(auto s : sites) {

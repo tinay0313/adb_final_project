@@ -43,10 +43,11 @@ public:
     /* recover a failed site */
     void recover(int site_id);
 
-    /* determines whether a transaction t can get the requested lock
-       when attempting to read from the database.
-       If can get read locks then return list of site numbers,
-       otherwise return blockers */
+    /* puts read lock on variable if it can be read locked
+       (aka lock was previously free or read)
+       return DOWN if all sites that store the variable are down
+       return CONFLICT if one site has a write lock on the variable
+       return the variable's value as a string if can read lock all instances of the variable */
     string read(Transaction* t, int var_id);
 
     /* determines whether a transaction t can get the requested lock

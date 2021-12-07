@@ -30,7 +30,7 @@ class site {
 	/* key is variable id, value is whether or not variable can be read (boolean) */
 	unordered_map<int, bool> canReadVar;
 	/* will record the timestamp upon site failure */
-	vector<time_t> failedTimes;
+	vector<int> failedTimes;
 
 public:
 	/* constructor */
@@ -63,6 +63,9 @@ public:
 	/* sets isRecovered to false, default value is false */
 	void setIsRecoveredFalse() { isRecovered = false; }
 
+	/* sets whether or not a variable can be read at this site */
+	void setCanReadVar(int var_id, bool flag) { canReadVar[var_id] = flag; }
+
 	/* returns all variables */
 	map<int, variable*> getAllVariables() { return variableList; }
 
@@ -71,6 +74,9 @@ public:
 
 	/* return lock type of lock that is currently enforced on variable as identified by input parameter id */
 	int getLockType(int id) { return lockTable[id]->getType(); }
+
+	/* return owners of lock that is currently enforced on variable as identified by input parameter id */
+	unordered_set<Transaction*> getLockOwners(int id) { return lockTable[id]->getOwners(); }
 
 	/* returns true if variable identified by input parameter id is free and false otherwise */
 	bool isVariableFree(int id) { return getLockType(id) == 0; }
@@ -92,6 +98,9 @@ public:
 
 	/*recovers the site and initializes lock table */
 	void recoverSite();
+
+	/* return the most recent time the site failed */
+	int getMostRecentFailTime() { return failedTimes.back(); }
 };
 
 #endif
