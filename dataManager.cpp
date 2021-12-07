@@ -106,22 +106,22 @@ string dataManager::read(Transaction* t, int var_id)
             if(t->varValCache.count(var_id)) {
                 return to_string(t->varValCache[var_id]);
             } else {
-                //SHOULD TRANSACTION BE ADDED TO WAITING QUEUE TO WAIT FOR VALID SITES??
                 //transaction should abort
-                return "DOWN";
+                return "ABORT";
             }
         } else {
             if(t->varValCache.count(var_id)) {
                 return to_string(t->varValCache[var_id]);
             } else {
                 //transaction should abort
-                return "DOWN";
+                return "ABORT";
             }
         }
     } else {
         //t is not RO transaction
         vector<site*> sites = this->varSiteList[var_id];
         unordered_set<site*> read_from;
+        unordered_set<site*> wait_from;
         int num_sites = sites.size();
         int down_sites = 0;
         int invalid_read_sites = 0;
@@ -130,6 +130,7 @@ string dataManager::read(Transaction* t, int var_id)
         for(auto s : sites) {
             //increment down_sites if site s is down
             if(!s->getIsRunning()) {
+                wait_from.insert(s);
                 down_sites++;
                 continue;
             }
@@ -139,12 +140,12 @@ string dataManager::read(Transaction* t, int var_id)
             //v is a replicated variable and no new writes have been commited to v yet
             //at site s
             if(!s->isVariableValidForRead(var_id)) {
+                wait_from.insert(s);
                 invalid_read_sites++;
                 continue;
             }
             //at this point, a variable may or may not be replicated
             //but even if the variable is replicated, it is valid for read
-
             if(s->getLockType(var_id) != 2) {
                 //if can read from a site, do we still need to read lock all sites that have this variable??
                 //i think the answer is yes
@@ -161,19 +162,30 @@ string dataManager::read(Transaction* t, int var_id)
                 return "CONFLICT";
             }
         }
-        //if some sites aren't down but just invalid reads, do we still return down????
-        //NEED TO ADD TO WAITING
-        //if(down_sites + invalid_read_sites == num_sites) return "DOWN";
-        if(down_sites == num_sites) return "DOWN";
+        if(down_sites == num_sites) {
+            for(auto s : wait_from) {
+                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+            }
+            return "DOWN";
+        } else if (down_sites + invalid_read_sites == num_sites) {
+            for(auto s : wait_from) {
+                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+            }
+            return "DOWN_INVALID";
+        } else if (invalid_read_sites == num_sites) {
+            for(auto s : wait_from) {
+                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+            }
+            return "INVALID";
+        }
         //can obtain read locks at sites that are up and have valid, readable values
         site* s = *(read_from.begin());
         for(auto s : read_from) {
             s->lockVariable(var_id, t, 1);
         }
+        printf("%s: %d", s->getVariable(var_id)->getName(), s->getVariable(var_id)->getValue());
         return to_string(s->getVariable(var_id)->getValue());
     }
-    
-    
 }
 
 /* determines whether a transaction t can get the requested lock
@@ -186,12 +198,14 @@ string dataManager::write(Transaction* t, int var_id)
 {
     vector<site*> sites = this->varSiteList[var_id];
     unordered_set<site*> write_to;
+    unordered_set<site*> wait_from;
     int num_sites = sites.size();
     int down_sites = 0;
     int valid_write_sites = 0;
     for(auto s : sites) {
         //increment down_sites if site s is down
         if(!s->getIsRunning()) {
+            wait_from.insert(s);
             down_sites++;
             continue;
         }
@@ -211,8 +225,12 @@ string dataManager::write(Transaction* t, int var_id)
         write_to.insert(s);
     }
     //if all sites that store the variable are down then didn't write to any site
-    //DO WE NEED TO ADD TO WAITING QUEUE HERE??
-    if(num_sites == down_sites) return "DOWN";
+    if(num_sites == down_sites) {
+        for(auto s : wait_from) {
+            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+        }
+        return "DOWN";
+    }
     //can obtain write locks to all sites that are up
     for(auto s : write_to) {
         s->lockVariable(var_id, t, 2);
@@ -220,37 +238,60 @@ string dataManager::write(Transaction* t, int var_id)
     return to_string(var_id);
 }
 
-/* commit a transaction */
-void dataManager::commit(Transaction* t)
+/* commit a transaction. Returns true if successfully commit and false otherwise */
+bool dataManager::commit(Transaction* t)
 {
-    if(variableValueMap.size() == 0) {
-        printf("Transaction %s has nothing to commit.\n", t->name);
-    } else {
-        // commit all the values in the map
-        for(auto it = variableValueMap.begin(); it != variableValueMap.end(); ++it) {
+    bool commit_success = true;
+    //check that transaction can still write to all variables
+    for(auto it = t->variableValueMap.begin(); it != t->variableValueMap.end(); ++it) {
+        int var_id = it->first;
+        if(!this->checkValidWrite(t, var_id)) commit_success = false;
+    }
+    //if all variables are still valid write, commit all the values in the map
+    if(commit_success) {
+        for(auto it = t->variableValueMap.begin(); it != t->variableValueMap.end(); ++it) {
             int var_id = it->first;
             int var_value = it->second;
             this->writeValueToSite(t, var_id, var_value);
             printf("Transaction %s changed variable %d's value to %d\n", t->name, var_id, var_value);
         }
     }
+    //release all locks held by t since t is ending
     releaseLocks(t);
+    return commit_success;
+}
+
+bool dataManager::checkValidWrite(Transaction* t, int var_id) {
+    vector<site*> sites = this->varSiteList[var_id];
+    int num_sites = sites.size();
+    int down_sites = 0;
+    for(auto s : sites) {
+        if(s->getIsRunning()) {
+            //if transaction t doesn't own a write lock for var_id, transaction failed
+            if(!s->getLockOwners(var_id).count(t) || s->getLockType(var_id) != 2)
+                return false;
+        } else {
+            //track if site is down
+            down_sites++;
+        }
+    }
+    //if all sites are down, transaction failed because it didn't write to any site
+    if(down_sites == num_sites) return false;
+    return true;
 }
 
 /* writes the value to the variable that are stored in running
-   sites. Function called upon commit */
+   sites. Function called upon commit
+   Returns true if successfully wrote to sites and false otherwise */
 void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
 {
     vector<site*> sites = this->varSiteList[var_id];
     vector<int> affected_sites;
     for(auto s : sites) {
         if(s->getIsRunning()) {
-            //check that transaction t has write lock on variable in site s's lockTable
-            if(s->getLockOwners(var_id).count(t) && s->getLockType(var_id) == 2) {
-                s->setVariableValue(var_id, value);
-                s->setCanReadVar(var_id, true);
-                affected_sites.push_back(s->getSiteId());
-            }
+            s->setVariableValue(var_id, value);
+            s->setCanReadVar(var_id, true);
+            affected_sites.push_back(s->getSiteId());
         }
     }
     printAffectedSites(affected_sites);
@@ -258,15 +299,11 @@ void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
 
 void dataManager::printAffectedSites(vector<int>& affected_sites)
 {
-    if(affected_sites.size() == 0) {
-        cout << "No sites were affected by this transaction" << endl;
-    } else {
-        cout << "Sites ";
-        for(int i = 0; i < affected_sites.size() - 1; ++i) {
-            cout << affected_sites[i] << ", ";
-        }
-        cout << affected_sites.back() << " were affected by this transaction" << endl;
+    cout << "Sites ";
+    for(int i = 0; i < affected_sites.size() - 1; ++i) {
+        cout << affected_sites[i] << ", ";
     }
+    cout << affected_sites.back() << " were affected by this transaction" << endl;
 }
 
 /* release locks after transaction commits or aborts.

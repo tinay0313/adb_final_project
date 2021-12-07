@@ -69,6 +69,10 @@ void lockDetails::removeTransactionFromWaitingQueue(Transaction* t)
 Transaction* lockDetails::getTransactionFromWaitingQueue()
 {
     Transaction* t = waitingQueue.front();
-    waitingQueue.erase(waitingQueue.begin());
     return t;
+}
+
+void lockDetails::removeFirstTransactionFromWaitingQueue()
+{
+    waitingQueue.erase(waitingQueue.begin());
 }

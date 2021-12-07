@@ -59,9 +59,11 @@ public:
     /* remove a transaction from waiting queue */
     void removeTransactionFromWaitingQueue(Transaction* t);
 
-    /* gets the first transaction queued at the waiting queue 
-        and pops it from the queue */
+    /* gets the first transaction queued at the waiting queue */
     Transaction* getTransactionFromWaitingQueue();
+
+    /* removes the first transaction queued at the waiting queue */
+    void lockDetails::removeFirstTransactionFromWaitingQueue();
 };
 
 #endif
