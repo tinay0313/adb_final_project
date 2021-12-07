@@ -183,6 +183,9 @@ string dataManager::read(Transaction* t, int var_id)
         //can obtain read locks at sites that are up and have valid, readable values
         site* s = *(read_from.begin());
         for(auto s : read_from) {
+            //add lock to transaction's successfully obtained lock list
+            //list will have var_id and site_num
+            t->ownedLocks[var_id].insert(s->getSiteId());
             s->lockVariable(var_id, t, 1);
         }
         printf("%s: %d", s->getVariable(var_id)->getName(), s->getVariable(var_id)->getValue());
@@ -235,6 +238,9 @@ string dataManager::write(Transaction* t, int var_id)
     }
     //can obtain write locks to all sites that are up
     for(auto s : write_to) {
+        //add lock to transaction's successfully obtained lock list
+        //list will have var_id and site_num
+        t->ownedLocks[var_id].insert(s->getSiteId());
         s->lockVariable(var_id, t, 2);
     }
     return to_string(var_id);
@@ -244,10 +250,11 @@ string dataManager::write(Transaction* t, int var_id)
 bool dataManager::commit(Transaction* t)
 {
     bool commit_success = true;
-    //check that transaction can still write to all variables
-    for(auto it = t->getVarValueList().begin(); it != t->getVarValueList().end(); ++it) {
+    //check that transaction can still read and write to all variables
+    for(auto it = t->ownedLocks.begin(); it != t->ownedLocks.end(); ++it) {
         int var_id = it->first;
-        if(!this->checkValidWrite(t, var_id)) commit_success = false;
+        unordered_set<int> sites_to_verify = it->second;
+        if(!this->checkValidReadWrite(t, var_id, sites_to_verify)) commit_success = false;
     }
     //if all variables are still valid write, commit all the values in the map
     if(commit_success) {
@@ -263,22 +270,22 @@ bool dataManager::commit(Transaction* t)
     return commit_success;
 }
 
-bool dataManager::checkValidWrite(Transaction* t, int var_id) {
-    vector<site*> sites = this->varSiteList[var_id];
-    int num_sites = sites.size();
-    int down_sites = 0;
-    for(auto s : sites) {
+bool dataManager::checkValidReadWrite(Transaction* t, int var_id, unordered_set<int>& sites_to_verify) {
+    for(auto site_id : sites_to_verify) {
+        site* s = this->getSites()[site_id - 1];
         if(s->getIsRunning()) {
-            //if transaction t doesn't own a write lock for var_id, transaction failed
-            if(!s->getLockOwners(var_id).count(t) || s->getLockType(var_id) != 2)
-                return false;
+            if(!s->getLockOwners(var_id).count(t)) {
+                //if transaction t doesn't own a lock for var_id at site s
+                //and should've owned that lock then transaction failed
+                if(t->ownedLocks[var_id].count(s->getSiteId())) {
+                    return false;
+                }
+            }
         } else {
-            //track if site is down
-            down_sites++;
+            //transaction t wanted to acces a site that failed so transaction failed
+            return false;
         }
     }
-    //if all sites are down, transaction failed because it didn't write to any site
-    if(down_sites == num_sites) return false;
     return true;
 }
 
@@ -291,9 +298,12 @@ void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
     vector<int> affected_sites;
     for(auto s : sites) {
         if(s->getIsRunning()) {
-            s->setVariableValue(var_id, value);
-            s->setCanReadVar(var_id, true);
-            affected_sites.push_back(s->getSiteId());
+            if(s->getLockOwners(var_id).count(t) && s->getLockType(var_id) == 2) {
+                //if transaction holds write lock on var_id at site s
+                s->setVariableValue(var_id, value);
+                s->setCanReadVar(var_id, true);
+                affected_sites.push_back(s->getSiteId());
+            }
         }
     }
     printAffectedSites(affected_sites);
@@ -313,7 +323,8 @@ void dataManager::printAffectedSites(vector<int>& affected_sites)
 unordered_set<int> dataManager::releaseLocks(Transaction* t)
 {
     unordered_set<int> freeVariables;
-    for(auto var_id : t->variableList) {
+    for(auto it = t->ownedLocks.begin(); it != t->ownedLocks.end(); ++it) {
+        int var_id = it->first;
         vector<site*> sites = this->varSiteList[var_id];
         bool isFree = true;
         for(auto s : sites) {

@@ -31,9 +31,10 @@ void lockDetails::removeLock(Transaction* t)
         //transaction is in owners set
         this->owners.erase(it);
     }
-    //free the lock
-    this->type = 0;
-
+    if(owners.size() == 0) {
+        //free the lock
+        this->type = 0;
+    }
 }
 
 /* add a transaction as an owner to the owners vector */

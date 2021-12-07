@@ -32,6 +32,8 @@ class Transaction {
         std::vector<int> siteAccessedList;
         /* save the value the transaction want to write to the variable */
         std::unordered_map<int, int> varValueList;
+        /* key is var_id, value is all site(s) transaction successfully obtained locks for var_id */
+        std::unordered_map<int, unordered_set<int>> ownedLocks;
 
         /* get varValueList*/
         std::vector<int> getSiteAccessedList();
