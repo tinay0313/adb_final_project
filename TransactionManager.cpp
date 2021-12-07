@@ -8,11 +8,10 @@
 #include <cstddef>
 
 
-
 TransactionManager::TransactionManager():
     DM(),
     timeStamp(0),
-    siteSize(11),
+    varID(0),
     siteVariableList(),
     failureHistory(),
     blockingGraph(),
@@ -89,14 +88,8 @@ void TransactionManager::addEdge(std::string trans1, std::string trans2) {
     blockingGraph.at(trans1).push_back(trans2);
 }
 
-void TransactionManager::deleteEdge(std::string trans1, std::string trans2)  {
-    std::vector<std::string> blocked_trans = blockingGraph.at(trans1);
-    blocked_trans.erase(std::remove(blocked_trans.begin(), blocked_trans.end(), trans2), blocked_trans.end());
-    // update value
-    auto it = blockingGraph.find(trans1);
-    if (it != blockingGraph.end()) {
-        it->second = blocked_trans;
-    }
+void TransactionManager::deleteEdge(std::string trans1)  {
+    blockingGraph.erase(trans1);
 }
 
 /* execution */
@@ -106,62 +99,64 @@ void TransactionManager::begin(std::string tran, bool isReadOnly, int startTime)
 }
 
 void TransactionManager::enqueueReadInstruction(std::string tran, std::string var) {
-    // instructionQueue.push_back({"R", tran, var, 0}); // todo pointer being freed was not allocated
+    instructionQueue.push_back({"R", tran, var, 0});
 }
 
 void TransactionManager::enqueueWriteInstruction(std::string tran, std::string var, int val) {
-    // instructionQueue.push_back({"W", tran, var, val}); // todo pointer being freed was not allocated
+    instructionQueue.push_back({"W", tran, var, val});
 }
 
-bool TransactionManager::read(std::string tran, std::string var) {
-    
+void TransactionManager::read(std::string tran, std::string var) {
+
     Transaction transaction = transactionList.at(tran);
+    varID = std::stoi(var.substr(1));
 
-    for (auto & site : DM.getSites()) {
-        int varID; // TODO ???
-        if (site->getIsRunning() & site->getAllVariables().count(varID)!= 0
-            & site->isVariableValidForRead(varID) & site->getLockType(varID) == 1
-            || site->getLockType(varID) == 2) {
-            
-            DM.read(&transaction, varID); // TODO ??????
-            return true;
-        }
-    }
-    return false;
-}
+    std::string res = DM.read(&tran, varID);
 
-bool TransactionManager::write(std::string tran, std::string var, int val) { // TODO
-    std::cout << "info: "<< tran << " " <<  " " << var << " " << val << std::endl;
-    
-    Transaction transaction = transactionList.at(tran);
-
-    bool canGetAllLocks = true;
-    bool isAtLeastOneSitesUp = false;
-
-    int varID; // TODO ???
-
-    // check can write or not
-    for (auto & site : DM.getSites()) {
-        // check site status
-        if (site->getIsRunning() & site->getAllVariables().count(varID)!= 0) {
-            isAtLeastOneSitesUp = true;
-            if (site->getLockType(varID) != 2) {
-                // check lock type
-                canGetAllLocks = false;
-            }      
-        }
-    }
-    // write
-    if (isAtLeastOneSitesUp & canGetAllLocks) {
+    if (res == "conflict") {
+        transaction.printLockConflict(tran);
+        // update blockingGraph
         for (auto & site : DM.getSites()) {
-            if (site->getIsRunning() & site->getAllVariables().count(varID)!= 0) {
-                DM.write(&transaction, varID, val); // TODO ??????
-                return true;
+            if (site->getIsRunning() & site->getAllVariables().count(varID)!= 0
+                & site->isVariableValidForRead(varID) & site->getLockType(varID) == 1
+                || site->getLockType(varID) == 2) {
+                    std::string blocker = site->getVariable(varID).getLock().getOwners().name;
+                    // add edage
+                    TransactionManager::addEdge(blocker, tran);
             }
-        }    
+        }
+    } else if (res == "down") {
+        transaction.printDownSite(tran);
+    } else {
+        std::cout << "Read sucessfully. " << var << " = " << res << std::endl;
     }
-    return false;
+}
+
+bool TransactionManager::write(std::string tran, std::string var, int val) {
     
+    Transaction transaction = transactionList.at(tran);
+    varID = std::stoi(var.substr(1));
+
+    std::string res = DM.write(&tran, varID, val);
+
+    if (res == "conflict") {
+        transaction.printLockConflict(tran);
+        // update blockingGraph
+        for (auto & site : DM.getSites()) {
+            if (site->getIsRunning() & site->getAllVariables().count(varID)!= 0
+                & site->isVariableValidForRead(varID) & site->getLockType(varID) == 2) {
+                    std::string blocker = site->getVariable(varID).getLock().getOwners().name;
+                    // add edage
+                    TransactionManager::addEdge(blocker, tran);
+            }
+        }
+    } else if (res == "down") {
+        transaction.printDownSite(tran);
+    } else {
+        std::cout << var << " can be updated to " << val << " after commit." << std::endl;
+    }
+    // update varValList
+    transaction.getVarValueList().at(varID).push_back(val);
 }
 
 void TransactionManager::dump() {    
@@ -173,33 +168,38 @@ void TransactionManager::end(std::string tran) {
     if (transaction.toBeAborted) {
         TransactionManager::abort(tran);
     } else {
-        unordered_map<int, int> variableValueMap;  // todo
-        TransactionManager::commit(&transaction, variableValueMap); // todo variableValueMap
+        TransactionManager::commit(&transaction, transaction.getVarValueList());
     }
-    transactionList.erase(tran);
 }
 
-// todo move to site??? wait for DM
 void TransactionManager::abort(std::string tran) {
     std::cout << "Abort transaction: " << tran << std::endl;
+    DM.releaseLocks(tran);
+    // update transaction list
+    transactionList.erase(tran);
+    // update blocking graph
+    TransactionManager::deleteEdge(tran);
 }
 
-// todo site? wait for DM
-void TransactionManager::commit(Transaction* t, unordered_map<int, int> variableValueMap) {
-     DM.commit(t, variableValueMap); // todo variableValueMap???????
+void TransactionManager::commit(Transaction* t, unordered_map<int, int> varValueList) {
+    DM.commit(t, varValueList);
+    // update transaction list
+    std::string tran = t->name;
+    transactionList.erase(tran);
+    // update blocking graph
+    TransactionManager::deleteEdge(tran);
 }
 
 void TransactionManager::fail(int siteID, int timeStamp) {    
-    DM.fail(siteID);
+    DM.fail(siteID, timeStamp);
     /* When a site fails, all transactions which ever accessed this site should be aborted in the end */
     for (auto const& tran : transactionList) {
         Transaction transaction = tran.second;
         if (transaction.isReadOnly || transaction.toBeAborted) {
             continue;
         }
-        
-        if (std::find(transaction.siteAccessedList.begin(), transaction.siteAccessedList.end(),
-            siteID)!=transaction.siteAccessedList.end()) {
+        if (std::find(transaction.getSiteAccessedList().begin(), transaction.siteAccessedList.end(),
+            siteID)!=transaction.getSiteAccessedList().end()) {
                 transaction.toBeAborted = true;
         }
     }
@@ -208,4 +208,3 @@ void TransactionManager::fail(int siteID, int timeStamp) {
 void TransactionManager::recover(int siteID) {
     DM.recover(siteID);
 }
-

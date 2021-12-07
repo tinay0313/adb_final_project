@@ -30,25 +30,18 @@ class TransactionManager {
 
         /* cur time*/
         int timeStamp;
-        /* size  of siteSize */
-        int siteSize;
+        /* ID  of variable, 20 refers to x20 */
+        int varID;
         /* SiteVariableList[i] has a vector of all variables saved at site i */ 
-        std::vector<std::vector<variable> > siteVariableList; //todo why pointer being freed was not allocated?????
+        std::vector<std::vector<variable> > siteVariableList;
         /* record the failure history of every site. */ 
         std::vector<std::vector<int> > failureHistory;
         /* key is the transaction name and the value are the transactions that are waiting For key’s data lock */
         std::unordered_map<std::string, std::vector<std::string> > blockingGraph;
         // turn into transaction list, no need to record age  
         std::unordered_map<std::string, Transaction> transactionList;
-
         /* record read/write instructions to be executed */
         std::vector<Instruction> instructionQueue;
-
-        /* if SiteStatus[i] == true then site i is up, Else site i is down */
-        // turn into site list, no need to record status --> site.isRunning
-        // no need site list --> DM.sites
-        // std::vector<bool> siteList;  // initial size = 11, true 
-
 
         /* detects deadlock by checking if there is a cycle in the blockingGraph Returns transaction that has to be aborted or nullptr otherwise */
         /* True : A deadlock is detected, the youngest transaction will be aborted.*/
@@ -62,14 +55,14 @@ class TransactionManager {
         /* add an edge to the blockingGraph*/
         void addEdge(std::string trans1, std::string trans2);
         /* delete an edge in the blockingGraph*/
-        void deleteEdge(std::string trans1, std::string trans2);
+        void deleteEdge(std::string trans1);
 
         /* Begin a transactione*/
         void begin(std::string tran, bool isReadOnly, int startTime);
         /* enqueue read/write enqueueReadInstruction to instructionQueue */
         void enqueueReadInstruction(std::string tran, std::string var);
         void enqueueWriteInstruction(std::string tran, std::string var, int val);
-        bool read(std::string tran, std::string var);
+        void read(std::string tran, std::string var);
         /*
         1. write to all up sites if write lock can be acquired
         2. if cannot get all write locks, cannot write
@@ -78,7 +71,7 @@ class TransactionManager {
         void dump();
         /* delete transaction instance */
         void end(std::string tran);
-                /* 
+        /* 
         1. release all current locks for this transaction
         2. update owners
         3. prints transaction name upon abort
@@ -93,11 +86,7 @@ class TransactionManager {
         void commit(Transaction* t, unordered_map<int, int> variableValueMap);
         void fail(int siteID, int timeStamp);
         void recover(int siteID);
-        
-
 };
 
 
 #endif
-
-
