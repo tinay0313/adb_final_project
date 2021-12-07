@@ -15,18 +15,18 @@ class lockDetails
 {
     /* 0 is free, 1 is read lock, 2 is write lock */
     int type;
-    unordered_set<Transaction* > owners;
-    vector<Transaction* > waitingQueue;
+    unordered_set<Transaction*> owners;
+    vector<Transaction*> waitingQueue;
 
 public:
     /* returns lock type */
     int getType() { return type; }
 
     /* returns owners */
-    unordered_set<Transaction* > getOwners() { return owners; }
+    unordered_set<Transaction*> getOwners() { return owners; }
 
     /* returns waiting queue */
-    vector<Transaction* > getWaitingQueue() { return waitingQueue; }
+    vector<Transaction*> getWaitingQueue() { return waitingQueue; }
 
     /* returns true if lock is free (type == 0) and false otherwise */
     bool isFree() { return type == 0; }

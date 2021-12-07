@@ -57,7 +57,11 @@ void lockDetails::addTransactionToWaitingQueue(Transaction* t)
 /* remove a transaction from waiting queue */
 void lockDetails::removeTransactionFromWaitingQueue(Transaction* t)
 {
-    waitingQueue.erase(t);
+    int i = 0;
+    for(; i < this->waitingQueue.size(); ++i) {
+        if(this->waitingQueue[i]->name == t->name) break;
+    }
+    waitingQueue.erase(this->waitingQueue.begin() + i);
 }
 
 /* gets the first transaction queued at the waiting queue 
