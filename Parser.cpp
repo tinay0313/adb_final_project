@@ -36,7 +36,6 @@ Parser::Parser(std::string *infile):
             std::cout << "Deadlock detected." << std::endl;
             TM.executeInstructionQueue();
         }
-
         //  pass intructions to transaction/data manager
         if (curLine.rfind("beginRO", 0) == 0) {
             tran = tokens.at(1);

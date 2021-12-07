@@ -11,23 +11,16 @@ Transaction::Transaction(std::string name, bool isReadOnly, int startTime):
     startTime(startTime),
     toBeAborted(false),
     siteAccessedList(),
-    variableList(),
-    siteList()
-    // varValCache()
+    varValueList()
 {};
 
-void Transaction::printAffectedSites() {
-    for(auto site: siteList) {
-        std::cout << "Affected Sites: " << site.id << std::endl;
-    }
+
+
+
+void Transaction::printLockConflict(std::string tran) {
+    std::cout << "Transaction: " << tran << " waits because of a lock conflict." << std::endl;
 }
 
-
-
-void Transaction::printLockConflict() { // todo lock
-    // std::cout << "Transaction: " << name << " waits because of a lock conflict." << name << std::endl;
-}
-
-void Transaction::printDownSite() {  // todo dm
-    // std::cout << "Transaction: " << name << " waits because of a down site." << name << std::endl;
+void Transaction::printDownSite(std::string tran) {
+    std::cout << "Transaction: " << tran << " waits because of a down site." << std::endl;
 }

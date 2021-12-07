@@ -30,20 +30,17 @@ class Transaction {
 
         /* saves all the the sites the transaction had accessed */
         std::vector<int> siteAccessedList;
-        /* saves all the the variables the transaction wants to access */
-        std::vector<Variable> variableList;
-        /* saves the sites that are affected by the transaction’s write */
-        std::vector<Site>  siteList;
-        /* saves the values of the variables the transaction successfully read upon transaction
-        Begin Key is the variable, value is the value of the variable transaction read upon begin */ 
-        // std::map<Variable, int> varValCache;
+        /* save the value the transaction want to write to the variable */
+        std::unordered_map<int, int> varValueList;
 
-        /* print the sites that are affected by the transaction’s write */ 
-        void printAffectedSites();
+        /* get varValueList*/
+        std::vector<int> getSiteAccessedList();
+        /* get varValueList*/
+        std::unordered_map<int, int> getVarValueList();
         /* prints message every time transaction waits because of a lock conflict */
-        void printLockConflict();
+        void printLockConflict(std::string tran);
         /* prints message every time transaction waits because of a down site */
-        void printDownSite();
+        void printDownSite(std::string tran);
 };
 
 
