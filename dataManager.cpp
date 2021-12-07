@@ -162,7 +162,7 @@ string dataManager::read(Transaction* t, int var_id)
             }
         }
         //if some sites aren't down but just invalid reads, do we still return down????
-        //NEED TO ADD TO WAITING QUEUE???
+        //NEED TO ADD TO WAITING
         //if(down_sites + invalid_read_sites == num_sites) return "DOWN";
         if(down_sites == num_sites) return "DOWN";
         //can obtain read locks at sites that are up and have valid, readable values
