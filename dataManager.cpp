@@ -124,11 +124,10 @@ string dataManager::read(Transaction* t, int var_id)
         vector<site*> sites = this->varSiteList[var_id];
         unordered_set<site*> read_from;
         unordered_set<site*> wait_from;
+        bool conflict = false;
         int num_sites = sites.size();
         int down_sites = 0;
         int invalid_read_sites = 0;
-        int valid_read_sites = 0;
-        int trans_start_time = t->startTime;
         for(auto s : sites) {
             //increment down_sites if site s is down
             if(!s->getIsRunning()) {
@@ -148,9 +147,13 @@ string dataManager::read(Transaction* t, int var_id)
             }
             //at this point, a variable may or may not be replicated
             //but even if the variable is replicated, it is valid for read
+            if(conflict) {
+                //another transaction holds a write lock on variable at site s so conflict
+                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+                continue;
+            }
             if(s->getLockType(var_id) != 2) {
-                //if can read from a site, do we still need to read lock all sites that have this variable??
-                //i think the answer is yes
+                //no write lock on variable so can read variable at site s
                 read_from.insert(s);
             } else {
                 //variable is write-locked
@@ -161,9 +164,10 @@ string dataManager::read(Transaction* t, int var_id)
                 //write lock held by transaction that is not t so lock conflict
                 //and t has to wait
                 s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
-                return "CONFLICT";
+                conflict = true;
             }
         }
+        if(conflict) return "CONFLICT";
         if(down_sites == num_sites) {
             for(auto s : wait_from) {
                 s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
@@ -204,6 +208,7 @@ string dataManager::write(Transaction* t, int var_id)
     vector<site*> sites = this->varSiteList[var_id];
     unordered_set<site*> write_to;
     unordered_set<site*> wait_from;
+    bool conflict = false;
     int num_sites = sites.size();
     int down_sites = 0;
     int valid_write_sites = 0;
@@ -212,6 +217,12 @@ string dataManager::write(Transaction* t, int var_id)
         if(!s->getIsRunning()) {
             wait_from.insert(s);
             down_sites++;
+            continue;
+        }
+        //if already determined that there is lock conflict then just add t
+        //to waiting queue
+        if(conflict) {
+            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
             continue;
         }
         //if lock wasn't previously free then can't write to any of the site
@@ -224,11 +235,13 @@ string dataManager::write(Transaction* t, int var_id)
                 continue;
             }
             s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
-            return "CONFLICT";
+            conflict = true;
+            //return "CONFLICT";
         }
         //can obtain write lock at site s
         write_to.insert(s);
     }
+    if(conflict) return "CONFLICT";
     //if all sites that store the variable are down then didn't write to any site
     if(num_sites == down_sites) {
         for(auto s : wait_from) {
@@ -250,13 +263,14 @@ string dataManager::write(Transaction* t, int var_id)
 bool dataManager::commit(Transaction* t)
 {
     bool commit_success = true;
-    //check that transaction can still read and write to all variables
+    //check that transaction can still read and write to all variables it obtained
+    //locks for
     for(auto it = t->ownedLocks.begin(); it != t->ownedLocks.end(); ++it) {
         int var_id = it->first;
         unordered_set<int> sites_to_verify = it->second;
         if(!this->checkValidReadWrite(t, var_id, sites_to_verify)) commit_success = false;
     }
-    //if all variables are still valid write, commit all the values in the map
+    //if variables are still valid write, commit all the values in the map
     if(commit_success) {
         for(auto it = t->getVarValueList().begin(); it != t->getVarValueList().end(); ++it) {
             int var_id = it->first;
@@ -271,6 +285,8 @@ bool dataManager::commit(Transaction* t)
 }
 
 bool dataManager::checkValidReadWrite(Transaction* t, int var_id, unordered_set<int>& sites_to_verify) {
+    //sites_to_verify are sites that transaction t obtained locks for when that particular
+    //read/write operation was processed
     for(auto site_id : sites_to_verify) {
         site* s = this->sites[site_id - 1];
         if(s->getIsRunning()) {
@@ -280,9 +296,7 @@ bool dataManager::checkValidReadWrite(Transaction* t, int var_id, unordered_set<
                 //this'll happen if t obtained lock at site s and then
                 //site s failed and recovered before t commits
                 //t would then lose the lock it initially obtained on s
-                if(t->ownedLocks[var_id].count(s->getSiteId())) {
-                    return false;
-                }
+                return false;
             }
         } else {
             //transaction t wants to acces a site that failed so transaction fails
