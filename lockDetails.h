@@ -47,12 +47,6 @@ public:
     /* set lock type to write (2) */
     void writeLock() { type = 2; }
 
-    /* add a transaction as an owner to the owners vector */
-    void addOwner(Transaction* t);
-
-    /* remove a transaction as an owner from the owners vector */
-    void removeOwner(Transaction* t);
-
     /* add a transaction to waiting queue */
     void addTransactionToWaitingQueue(Transaction* t);
 
@@ -60,10 +54,10 @@ public:
     void removeTransactionFromWaitingQueue(Transaction* t);
 
     /* gets the first transaction queued at the waiting queue */
-    Transaction* getTransactionFromWaitingQueue();
+    Transaction* getTransactionFromWaitingQueue() { return waitingQueue.front(); }
 
     /* removes the first transaction queued at the waiting queue */
-    void lockDetails::removeFirstTransactionFromWaitingQueue();
+    void removeFirstTransactionFromWaitingQueue() { waitingQueue.erase(waitingQueue.begin()); }
 };
 
 #endif
