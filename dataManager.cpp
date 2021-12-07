@@ -101,7 +101,7 @@ void dataManager::generateVarValCache(Transaction* t)
    of the variable */
 string dataManager::read(Transaction* t, int var_id)
 {
-    if(t->isReadOnly()) {
+    if(t->isReadOnly) {
         if(t->varValCache.empty()) {
             //cache all variable values at start of RO transaction t
             this->generateVarValCache(t);
@@ -245,13 +245,13 @@ bool dataManager::commit(Transaction* t)
 {
     bool commit_success = true;
     //check that transaction can still write to all variables
-    for(auto it = t->variableValueMap.begin(); it != t->variableValueMap.end(); ++it) {
+    for(auto it = t->getVarValueList().begin(); it != t->getVarValueList().end(); ++it) {
         int var_id = it->first;
         if(!this->checkValidWrite(t, var_id)) commit_success = false;
     }
     //if all variables are still valid write, commit all the values in the map
     if(commit_success) {
-        for(auto it = t->variableValueMap.begin(); it != t->variableValueMap.end(); ++it) {
+        for(auto it = t->getVarValueList().begin(); it != t->getVarValueList().end(); ++it) {
             int var_id = it->first;
             int var_value = it->second;
             this->writeValueToSite(t, var_id, var_value);
