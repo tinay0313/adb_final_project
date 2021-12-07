@@ -10,6 +10,8 @@ Transaction::Transaction(std::string name, bool isReadOnly, int startTime):
     isReadOnly(isReadOnly),
     startTime(startTime),
     toBeAborted(false),
+    varValCache(),
+    varAccessedList(),
     siteAccessedList(),
     varValueList()
 {};

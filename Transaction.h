@@ -13,6 +13,16 @@
 #include "dataManager.h"
 
 class Transaction {
+    private:
+
+        /* for readOnly transaction */
+        std::unordered_map<int, int> varValCache; // varID : val
+        /* variable has accessed by the transaction before  */
+        std::vector<int> varAccessedList;
+        /* saves all the the sites the transaction had accessed */
+        std::vector<int> siteAccessedList;
+        /* save the value the transaction want to write to the variable */
+        std::unordered_map<int, int> varValueList;
 
     public:
 
@@ -28,19 +38,26 @@ class Transaction {
         /* transaction should be aborted or not */
         bool toBeAborted;
 
-        /* saves all the the sites the transaction had accessed */
-        std::vector<int> siteAccessedList;
-        /* save the value the transaction want to write to the variable */
-        std::unordered_map<int, int> varValueList;
+        
 
+
+        /* get varValCache*/
+        std::unordered_map<int, int> getVarValCache();
+        /* get varAccessedList*/
+        std::vector<int> getVarAccessedList();
         /* get varValueList*/
         std::vector<int> getSiteAccessedList();
         /* get varValueList*/
         std::unordered_map<int, int> getVarValueList();
+        
         /* prints message every time transaction waits because of a lock conflict */
         void printLockConflict(std::string tran);
         /* prints message every time transaction waits because of a down site */
         void printDownSite(std::string tran);
+        /* prints message every time transaction waits because of a invalid var */
+        void printInvalid(std::string tran);
+        /* prints message every time transaction waits because of a down site & invalid var */
+        void printDownInvalid(std::string tran);
 };
 
 

@@ -12,12 +12,12 @@ TransactionManager::TransactionManager():
     DM(),
     timeStamp(0),
     varID(0),
-    siteVariableList(),
-    failureHistory(),
     blockingGraph(),
     transactionList(),
     instructionQueue()
+    
 {};
+
 
 bool TransactionManager::detectDeadlock() {
 
@@ -30,7 +30,7 @@ bool TransactionManager::detectDeadlock() {
         // dfs
         if (TransactionManager::helper(start, start, visited, blockingGraph)) {
             Transaction transaction = transactionList[start];
-            // find the youngest
+            // get the youngest
             if (transaction.startTime < younestStartTime) {
                 youngest = start;
                 younestStartTime = transaction.startTime;
@@ -42,6 +42,7 @@ bool TransactionManager::detectDeadlock() {
         TransactionManager::abort(youngest);
     }
 }
+
 
 // todo why no match declaration?
 bool TransactionManager::helper(std::string start, std::string target, std::unordered_set<std::string> visited,
@@ -60,37 +61,45 @@ bool TransactionManager::helper(std::string start, std::string target, std::unor
     }
 }
 
-void TransactionManager::executeInstructionQueue() {
+
+void TransactionManager::executeNextTransaction(std::string tran) {
+
+    Transaction curTran = transactionList.at(tran);
     bool isSuccessful = false;
-    for (auto const& ins : instructionQueue) {
-        Transaction transaction = transactionList.at(ins.tran);
-        Transaction* tran_ptr = &transaction;
-        if (tran_ptr == nullptr) {
-            instructionQueue.erase(ins);
+
+    // get first transaction from wating queue of the variable which the transaction has accessed before
+    for (auto const& var : curTran.getVarAccessedList()) {
+        Transaction* nextTran = var.getLock().getTransactionFromWaitingQueue();
+        Instruction nextIns = instructionQueue.at(nextTran->name);
+
+        if (nextTran == nullptr) {
+            instructionQueue.erase(nextIns);
             continue;
         }
-        if (ins.type == "R") {
-            if (transaction.isReadOnly) {
-                isSuccessful = TransactionManager::read(ins.tran, ins.var);
-            }
-        } else if (ins.type == "W") {
-            isSuccessful = TransactionManager::write(ins.tran, ins.var, ins.val);
+        if (nextIns.type == "R") {
+            isSuccessful = TransactionManager::read(nextIns.tran, nextIns.var);
+        } else if (nextIns.type == "W") {
+            isSuccessful = TransactionManager::write(nextIns.tran, nextIns.var, nextIns.val);
         }
         // erase instruction when completed successfully
         if (isSuccessful) {
-            instructionQueue.erase(ins);
+            var->removeTransactionFromWaitingQueue(nextTran);
+            instructionQueue.erase(nextIns);
         }
     }
 }
+
 
 /* modify blockingGraph */
 void TransactionManager::addEdge(std::string trans1, std::string trans2) {
     blockingGraph.at(trans1).push_back(trans2);
 }
 
+
 void TransactionManager::deleteEdge(std::string trans1)  {
     blockingGraph.erase(trans1);
 }
+
 
 /* execution */
 void TransactionManager::begin(std::string tran, bool isReadOnly, int startTime) {
@@ -98,22 +107,36 @@ void TransactionManager::begin(std::string tran, bool isReadOnly, int startTime)
     transactionList.insert({ tran, Transaction(tran, isReadOnly, startTime) });
 }
 
-void TransactionManager::enqueueReadInstruction(std::string tran, std::string var) {
-    instructionQueue.push_back({"R", tran, var, 0});
+
+bool TransactionManager::readRO(std::string tran, std::string var) {
+    // check if var is in the varValCache
+    Transaction transaction = transactionList.at(tran);
+    int res = transaction.getVarValCache().at(varID);
+    if (res) {
+        std::cout << var << ": " << res << std::endl;
+        return true;
+    }
+    return false;
 }
 
-void TransactionManager::enqueueWriteInstruction(std::string tran, std::string var, int val) {
-    instructionQueue.push_back({"W", tran, var, val});
-}
-
-void TransactionManager::read(std::string tran, std::string var) {
+// todo blocker
+// todo site accessed
+bool TransactionManager::read(std::string tran, std::string var) {
 
     Transaction transaction = transactionList.at(tran);
     varID = std::stoi(var.substr(1));
 
-    std::string res = DM.read(&tran, varID);
+    std::string res;
+    bool isSuccessful = false;
 
-    if (res == "conflict") {
+    if (transaction.isReadOnly) {
+        isSuccessful = TransactionManager::readRO(tran, var);
+    }
+
+    // non-readOnly
+    res = DM.read(&tran, varID);
+
+    if (res == "CONFLICT") {
         transaction.printLockConflict(tran);
         // update blockingGraph
         for (auto & site : DM.getSites()) {
@@ -125,12 +148,21 @@ void TransactionManager::read(std::string tran, std::string var) {
                     TransactionManager::addEdge(blocker, tran);
             }
         }
-    } else if (res == "down") {
+    } else if (res == "ABORT") {
+        TransactionManager::abort(tran);
+    } else if (res == "DOWN") {
         transaction.printDownSite(tran);
+    } else if (res == "INVALID") {
+        transaction.printInvalid(tran);
+    } else if (res == "DOWN_INVALID") {
+        transaction.printDownInvalid(tran);
     } else {
-        std::cout << "Read sucessfully. " << var << " = " << res << std::endl;
+        std::cout << var << ": " << res << std::endl;
+        isSuccessful = true;
     }
+    return isSuccessful;
 }
+
 
 bool TransactionManager::write(std::string tran, std::string var, int val) {
     
@@ -138,8 +170,9 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
     varID = std::stoi(var.substr(1));
 
     std::string res = DM.write(&tran, varID, val);
+    bool isSuccessful = false;
 
-    if (res == "conflict") {
+    if (res == "CONFLICT") {
         transaction.printLockConflict(tran);
         // update blockingGraph
         for (auto & site : DM.getSites()) {
@@ -150,18 +183,23 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
                     TransactionManager::addEdge(blocker, tran);
             }
         }
-    } else if (res == "down") {
+    } else if (res == "DOWN") {
         transaction.printDownSite(tran);
     } else {
         std::cout << var << " can be updated to " << val << " after commit." << std::endl;
+        isSuccessful = true;
     }
     // update varValList
     transaction.getVarValueList().at(varID).push_back(val);
+
+    return isSuccessful;
 }
+
 
 void TransactionManager::dump() {    
     DM.dump();
 }
+
 
 void TransactionManager::end(std::string tran) {
     Transaction transaction = transactionList.at(tran);
@@ -172,23 +210,38 @@ void TransactionManager::end(std::string tran) {
     }
 }
 
+
 void TransactionManager::abort(std::string tran) {
-    std::cout << "Abort transaction: " << tran << std::endl;
-    DM.releaseLocks(tran);
+    std::cout << tran << " aborts" << std::endl;
     // update transaction list
     transactionList.erase(tran);
     // update blocking graph
     TransactionManager::deleteEdge(tran);
+    // execute next transaction from waiting queue
+    TransactionManager::executeNextTransaction(tran);
+    // release locks hold by transaction
+    DM.releaseLocks(tran);
 }
 
+
 void TransactionManager::commit(Transaction* t, unordered_map<int, int> varValueList) {
-    DM.commit(t, varValueList);
-    // update transaction list
-    std::string tran = t->name;
-    transactionList.erase(tran);
-    // update blocking graph
-    TransactionManager::deleteEdge(tran);
+    bool success = DM.commit(t, varValueList);
+    if (success) {
+        std::cout << t->name << " commits" << std::endl;
+        // update transaction list
+        std::string tran = t->name;
+        transactionList.erase(tran);
+        // update blocking graph
+        TransactionManager::deleteEdge(tran);
+        // execute next transaction from waiting queue
+        TransactionManager::executeNextTransaction(tran);
+        // release locks hold by transaction
+        DM.releaseLocks(tran);
+    } else {
+        std::cout << t->name << " commits failed" << std::endl;
+    }
 }
+
 
 void TransactionManager::fail(int siteID, int timeStamp) {    
     DM.fail(siteID, timeStamp);
@@ -198,13 +251,35 @@ void TransactionManager::fail(int siteID, int timeStamp) {
         if (transaction.isReadOnly || transaction.toBeAborted) {
             continue;
         }
-        if (std::find(transaction.getSiteAccessedList().begin(), transaction.siteAccessedList.end(),
+        if (std::find(transaction.getSiteAccessedList().begin(), transaction.getSiteAccessedList.end(),
             siteID)!=transaction.getSiteAccessedList().end()) {
                 transaction.toBeAborted = true;
         }
     }
 }
 
+
 void TransactionManager::recover(int siteID) {
     DM.recover(siteID);
+}
+
+
+void TransactionManager::enqueueROInstruction(std::string tran, std::string var) {
+    instructionQueue.push_back({"RO", tran, var, 0});
+}
+
+
+void TransactionManager::enqueueReadInstruction(std::string tran, std::string var) {
+    instructionQueue.push_back({"R", tran, var, 0});
+}
+
+
+void TransactionManager::enqueueWriteInstruction(std::string tran, std::string var, int val) {
+    instructionQueue.push_back({"W", tran, var, val});
+}
+
+
+void TransactionManager::updateVarAccessedList(std::string tran, std::string var) {
+    Transaction transaction = transactionList.at(tran);
+    transaction.getVarAccessedList().push_back(var);
 }
