@@ -31,6 +31,11 @@ site::site(int id)
             lockDetails* lock = new lockDetails();
             this->lockTable[i] = lock;
             this->canReadVar[i] = true;
+        } else if (((i + 1) % 10 == 0)&& id == 10) {
+            this->variableList[i] = v;
+            lockDetails* lock = new lockDetails();
+            this->lockTable[i] = lock;
+            this->canReadVar[i] = true;
         }
     }
 }

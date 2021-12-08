@@ -146,8 +146,19 @@ void TransactionManager::begin(std::string tran, bool isReadOnly, int startTime)
 bool TransactionManager::readRO(std::string tran, std::string var) {
     // check if var is in the varValCache
     Transaction* transaction = transactionList.at(tran);
-    int res = transaction->getVarValCache().at(varID);
-    if (res) {
+    varID = std::stoi(var.substr(1));
+
+    if(transaction->getVarValCache().empty()) {
+        DM.generateVarValCache(transaction);
+    }
+
+    int hasCache = false;
+    int res;
+    if(transaction->getVarValCache().count(varID)) {
+        hasCache = true;
+        res = transaction->getVarValCache().at(varID);
+    }
+    if (hasCache) {
         std::cout << var << ": " << res << std::endl;
         return true;
     }
@@ -165,9 +176,10 @@ bool TransactionManager::read(std::string tran, std::string var) {
     // read-only
     if (transaction->isReadOnly) {
         isSuccessful = TransactionManager::readRO(tran, var);
+    } else {
+        // non read-only
+        res = DM.read(transaction, varID);
     }
-    // non read-only
-    res = DM.read(transaction, varID);
 
     if (res.rfind("T")) {
         transaction->printLockConflict(tran);

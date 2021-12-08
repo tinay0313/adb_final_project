@@ -14,8 +14,7 @@
 
 class Transaction {
     private:
-        /* for readOnly transaction */
-        std::unordered_map<int, int> varValCache; // varID : val
+        
         /* variable has accessed by the transaction before  */
         std::vector<int> varAccessedList;
 
@@ -40,6 +39,8 @@ class Transaction {
         std::unordered_map<int, std::unordered_set<int>> ownedLocks;
         /* list of variables that become free after locks hold by the transaction are released */
         std::unordered_set<int> freeVars;
+        /* for readOnly transaction */
+        std::unordered_map<int, int> varValCache; // varID : val
 
 
         /* get varValCache*/
