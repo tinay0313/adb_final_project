@@ -19,7 +19,7 @@ TransactionManager::TransactionManager():
     instructionQueue()
 {};
 
-//todo RETURN VALUE?
+
 bool TransactionManager::detectDeadlock() {
 
     std::string youngest;
@@ -41,11 +41,12 @@ bool TransactionManager::detectDeadlock() {
     // abort the youngest
     if (!youngest.empty()) {
         TransactionManager::abort(youngest);
+        return true;
     }
+    return false;
 }
 
 
-// todo return value?
 bool TransactionManager::helper(std::string start, std::string target, std::unordered_set<std::string> visited,
                                 std::unordered_map<std::string, std::vector<std::string>> blockingGraph) {
     if (visited.size() != 0 && start == target) {
@@ -77,12 +78,15 @@ void TransactionManager::executeNextTransaction(std::string tran) {
             break;
         }
         Transaction* nextTran = v->getLock()->getTransactionFromWaitingQueue();
-        auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextTran->name);
+        std::string nextTranName = nextTran->name;
+        auto it = std::find_if(instructionQueue.begin(), instructionQueue.end(),
+                                [&nextTranName](const Instruction& ins) { 
+            return ins.tran == nextTranName;
+        });
         Instruction nextIns = *it;
-        //Instruction nextIns = instructionQueue.at(nextTran->name);
 
         if (nextTran == nullptr) {
-            auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextIns);
+            // auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextIns);
             instructionQueue.erase(it);
             continue;
         }
@@ -94,7 +98,7 @@ void TransactionManager::executeNextTransaction(std::string tran) {
         // erase instruction when completed successfully
         if (isSuccessful) {
             v->getLock()->removeTransactionFromWaitingQueue(nextTran);
-            auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextIns);
+            // auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextIns);
             instructionQueue.erase(it);
         }
     }
@@ -235,16 +239,14 @@ void TransactionManager::abort(std::string tran) {
 
 // todo why no match declaration?
 void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> varValueList) {
-    pair<bool, unordered_set<int>> res = DM.commit(t);
+    pair<bool, unordered_set<int>> res = DM.commit(t); // already released locks
     bool success = res.first;
-    //save free vars?
+    t->getFreeVars() = res.second;
+
     if (success) {
         std::cout << t->name << " commits" << std::endl;
 
         Transaction transaction = transactionList.at(t->name);
-        //WHY RELEASE LOCKS TWICE???
-        // release locks hold by the transaction
-        //transaction.getFreeVars() = res.second;
         // update transaction list
         std::string tran = t->name;
         transactionList.erase(tran);
@@ -252,8 +254,6 @@ void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> var
         TransactionManager::deleteEdge(tran);
         // execute next transaction from waiting queue
         TransactionManager::executeNextTransaction(tran);
-        // release locks hold by transaction
-        //std::unordered_set<int> freeVars = DM.releaseLocks(tran);
     } else {
         std::cout << t->name << " commits failed" << std::endl;
     }
@@ -281,18 +281,25 @@ void TransactionManager::recover(int siteID) {
 }
 
 
-void TransactionManager::enqueueROInstruction(std::string tran, std::string var) {
-    instructionQueue.push_back({"RO", tran, var, 0});
-}
-
-
 void TransactionManager::enqueueReadInstruction(std::string tran, std::string var) {
-    instructionQueue.push_back({"R", tran, var, 0});
+    Instruction ins = {
+        "R",
+        tran,
+        var,
+        0
+    };
+    instructionQueue.push_back(ins);
 }
 
 
 void TransactionManager::enqueueWriteInstruction(std::string tran, std::string var, int val) {
-    instructionQueue.push_back({"W", tran, var, val});
+    Instruction ins = {
+        "W",
+        tran,
+        var,
+        val
+    };
+    instructionQueue.push_back(ins);
 }
 
 
