@@ -176,40 +176,48 @@ bool TransactionManager::read(std::string tran, std::string var) {
     // read-only
     if (transaction->isReadOnly) {
         isSuccessful = TransactionManager::readRO(tran, var);
+        if(!isSuccessful) {
+            //couldn't read value so abort
+            TransactionManager::abort(tran);
+        } else {
+            auto it = std::find_if(instructionQueue.begin(), instructionQueue.end(),
+                                    [&tran](const Instruction& ins) { 
+                return ins.tran == tran;
+            });
+            Instruction nextIns = *it;
+            instructionQueue.erase(it);
+        }
     } else {
         // non read-only
         res = DM.read(transaction, varID);
-    }
-
-    if (res.rfind("T")) {
-        transaction->printLockConflict(tran);
-        // update blockingGraph
-        TransactionManager::addEdge(res, tran);
-    } else if (res == "ABORT") {
-        TransactionManager::abort(tran);
-    } else if (res == "DOWN") {
-        transaction->printDownSite(tran);
-    } else if (res == "INVALID") {
-        transaction->printInvalid(tran);
-    } else if (res == "DOWN_INVALID") {
-        transaction->printDownInvalid(tran);
-    } else {
-        std::cout << var << ": " << res << std::endl;
-        // get all accessed sites
-        std::unordered_set<int> accessedSites = transaction->getOwnedLocks().at(varID);
-        // update SiteAccessedList
-        for (auto const& site: accessedSites){
-            transaction->getSiteAccessedList().push_back(site);
+        if (res.rfind("T")) {
+            transaction->printLockConflict(tran);
+            // update blockingGraph
+            TransactionManager::addEdge(res, tran);
+        } else if (res == "DOWN") {
+            transaction->printDownSite(tran);
+        } else if (res == "INVALID") {
+            transaction->printInvalid(tran);
+        } else if (res == "DOWN_INVALID") {
+            transaction->printDownInvalid(tran);
+        } else {
+            std::cout << var << ": " << res << std::endl;
+            // get all accessed sites
+            std::unordered_set<int> accessedSites = transaction->getOwnedLocks().at(varID);
+            // update SiteAccessedList
+            for (auto const& site: accessedSites){
+                transaction->getSiteAccessedList().push_back(site);
+            }
+            isSuccessful = true;
         }
-        isSuccessful = true;
-    }
-    if(isSuccessful) {
-        auto it = std::find_if(instructionQueue.begin(), instructionQueue.end(),
-                                [&tran](const Instruction& ins) { 
-            return ins.tran == tran;
-        });
-        Instruction nextIns = *it;
-        instructionQueue.erase(it);
+        if(isSuccessful) {
+            auto it = std::find_if(instructionQueue.begin(), instructionQueue.end(),
+                                    [&tran](const Instruction& ins) { 
+                return ins.tran == tran;
+            });
+            Instruction nextIns = *it;
+            instructionQueue.erase(it);
+        }
     }
     return isSuccessful;
 }
