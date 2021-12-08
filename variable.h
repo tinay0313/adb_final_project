@@ -10,6 +10,8 @@
 #include "lockDetails.h"
 #include <string>
 
+using namespace std;
+
 class variable
 {
     string name;

@@ -11,12 +11,14 @@
 #include <unordered_set>
 #include "Transaction.h"
 
+using namespace std;
+
 class lockDetails
 {
     /* 0 is free, 1 is read lock, 2 is write lock */
     int type;
-    unordered_set<Transaction*> owners;
-    vector<Transaction*> waitingQueue;
+    unordered_set<Transaction *> owners;
+    vector<Transaction *> waitingQueue;
 
 public:
     /* returns lock type */

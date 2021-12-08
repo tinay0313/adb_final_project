@@ -5,7 +5,7 @@
 # declare variables
 CC = g++ -std=c++11
 CPPFLAGS = -c -Wall
-OFILES = main.o Parser.o TransactionManager.o Transaction.o dataManager.o
+OFILES = main.o Parser.o TransactionManager.o Transaction.o dataManager.o site.o variable.o lockDetails.o
 
 # commands
 main : $(OFILES)
@@ -23,8 +23,17 @@ TransactionManager.o: TransactionManager.cpp TransactionManager.h Transaction.h
 Transaction.o: Transaction.cpp Transaction.h dataManager.h
 	$(CC) $(CPPFLAGS) Transaction.cpp
 
-dataManager.o: dataManager.cpp dataManager.h variable.h site.h 
+dataManager.o: dataManager.cpp dataManager.h variable.h site.h Transaction.h lockDetails.h
 	$(CC) $(CPPFLAGS) dataManager.cpp
+
+site.o: site.cpp site.h variable.h lockDetails.h Transaction.h
+	$(CC) $(CPPFLAGS) site.cpp
+
+variable.o: variable.cpp variable.h lockDetails.h
+	$(CC) $(CPPFLAGS) variable.cpp
+
+lockDetails.o: lockDetails.cpp lockDetails.h Transaction.h
+	$(CC) $(CPPFLAGS) lockDetails.cpp
 
 clean:
 	rm -f main *.o *~
