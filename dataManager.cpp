@@ -102,18 +102,18 @@ void dataManager::generateVarValCache(Transaction* t)
 string dataManager::read(Transaction* t, int var_id)
 {
     if(t->isReadOnly) {
-        if(t->varValCache.empty()) {
+        if(t->getVarValCache().empty()) {
             //cache all variable values at start of RO transaction t
             this->generateVarValCache(t);
-            if(t->varValCache.count(var_id)) {
-                return to_string(t->varValCache[var_id]);
+            if(t->getVarValCache().count(var_id)) {
+                return to_string(t->getVarValCache()[var_id]);
             } else {
                 //transaction should abort
                 return "ABORT";
             }
         } else {
-            if(t->varValCache.count(var_id)) {
-                return to_string(t->varValCache[var_id]);
+            if(t->getVarValCache().count(var_id)) {
+                return to_string(t->getVarValCache()[var_id]);
             } else {
                 //transaction should abort
                 return "ABORT";
@@ -334,7 +334,7 @@ void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
         }
     }
     */
-    printAffectedSites(affected_sites);
+    printAffectedSites(to_print_sites);
 }
 
 void dataManager::printAffectedSites(vector<int>& affected_sites)

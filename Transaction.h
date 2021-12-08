@@ -26,7 +26,7 @@ class Transaction {
         /* save the value the transaction want to write to the variable */
         std::unordered_map<int, int> varValueList;
         /* key is var_id, value is all site(s) transaction successfully obtained locks for var_id */
-        std::unordered_map<int, std::unordered_set<int>> ownedLocks;
+        //std::unordered_map<int, std::unordered_set<int>> ownedLocks;
         /* list of variables that become free after locks hold by the transaction are released */
         std::unordered_set<int> freeVars;
 
@@ -54,6 +54,7 @@ class Transaction {
 
         /* get varValCache*/
         std::unordered_map<int, int> getVarValCache() { return varValCache; }
+
         /* get varAccessedList*/
         std::vector<int> getVarAccessedList();
         /* get siteAccessed */
@@ -61,7 +62,7 @@ class Transaction {
         /* get varValueList*/
         std::unordered_map<int, int> getVarValueList() { return varValueList; }
         /* get ownedLocks*/
-        std::unordered_map<int, std::unordered_set<int>> getOwnedLocks() {return ownedLocks; }
+        std::unordered_map<int, std::unordered_set<int>> getOwnedLocks() { return ownedLocks; }
         /* get freeVars*/
         std::unordered_map<int, std::unordered_set<int>> getFreeVars();
         
