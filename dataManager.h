@@ -26,6 +26,9 @@ class dataManager {
     unordered_map<int, vector<site* >> varSiteList;
 
 public:
+    /* constructor */
+    dataManager();
+    
     /* returns all sites managed by dataManager */
     vector<site* > getSites() { return sites; }
 

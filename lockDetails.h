@@ -21,6 +21,9 @@ class lockDetails
     vector<Transaction *> waitingQueue;
 
 public:
+    /* constructor */
+    lockDetails();
+    
     /* returns lock type */
     int getType() { return type; }
 

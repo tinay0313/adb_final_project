@@ -44,9 +44,9 @@ void dataManager::dump()
         for(auto it = variables.begin(); it != variables.end(); ++it) {
             variable* v = it->second;
             if(it == variables.begin()) {
-                printf("%s: %d", v->getName(), v->getValue());
+                printf("%s: %d", v->getName().c_str(), v->getValue());
             } else {
-                printf(", %s: %d", v->getName(), v->getValue());
+                printf(", %s: %d", v->getName().c_str(), v->getValue());
             }
         }
         cout << endl;
@@ -199,7 +199,6 @@ string dataManager::write(Transaction* t, int var_id)
     string conflict_transaction;
     int num_sites = sites.size();
     int down_sites = 0;
-    int valid_write_sites = 0;
     for(auto s : sites) {
         //increment down_sites if site s is down
         if(!s->getIsRunning()) {
@@ -265,7 +264,7 @@ pair<bool, unordered_set<int>> dataManager::commit(Transaction* t)
             int var_id = it->first;
             int var_value = it->second;
             this->writeValueToSite(t, var_id, var_value);
-            printf("Transaction %s changed variable %d's value to %d\n", t->name, var_id, var_value);
+            printf("Transaction %s changed variable %d's value to %d\n", t->name.c_str(), var_id, var_value);
         }
     }
     //release all locks held by t since t is ending
