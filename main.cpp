@@ -20,7 +20,5 @@ int main(int argc, char** argv) {
    inputFile = argv[1];
 
    Parser parser = Parser(&inputFile);
-  
    return 0;
- 
 };

@@ -29,11 +29,11 @@ Parser::Parser(std::string *infile):
     while (getline(inputFile, curLine) && !inputFile.eof()){
         // get instruction infos
         std::vector<std::string> tokens = Parser::parse(curLine, delimiters);
-        std::cout << curLine << std::endl;
         // abort the youngest transaction if a deadlock is founded
         while (TM.detectDeadlock()) {
             std::cout << "Deadlock detected." << std::endl;
         }
+        std::cout << curLine << std::endl;
         //  pass intructions to transaction manager
         if (curLine.rfind("beginRO", 0) == 0) {  // won't affetc waiting queue
             tran = tokens.at(1);
@@ -52,6 +52,9 @@ Parser::Parser(std::string *infile):
             val = std::stoi(tokens.at(3));  //convert to int
             TM.enqueueWriteInstruction(tran, var, val);
             TM.updateVarAccessedList(tran, var);
+            while (TM.detectDeadlock()) {
+                std::cout << "Deadlock detected." << std::endl;
+            }
         } else if (curLine.rfind("dump", 0) == 0) {
             TM.dump();
         } else if (curLine.rfind("end", 0) == 0) {

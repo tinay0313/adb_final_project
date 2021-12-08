@@ -36,7 +36,7 @@ class TransactionManager {
         /* key is the transaction name and the value are the transactions that are waiting For key’s data lock */
         std::unordered_map<std::string, std::vector<std::string> > blockingGraph;
         /* keep information of active transactions */
-        std::unordered_map<std::string, Transaction> transactionList;
+        std::unordered_map<std::string, Transaction*> transactionList;
         /* record read/write instructions to be executed */
         std::vector<Instruction> instructionQueue;
 
@@ -44,6 +44,7 @@ class TransactionManager {
         /* detects deadlock by checking if there is a cycle in the blockingGraph Returns transaction that has to be aborted or nullptr otherwise */
         /* True : A deadlock is detected, the youngest transaction will be aborted.*/
         bool detectDeadlock();
+
         /* detect deadlock by dfs */
         bool helper(std::string start, std::string target, std::unordered_set<std::string>& visited,
                     std::unordered_map<std::string, std::vector<std::string>> blockingGraph);

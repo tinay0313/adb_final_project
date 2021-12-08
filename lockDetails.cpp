@@ -21,7 +21,7 @@ void lockDetails::addLock(string t, int lockType)
 {
     this->owners.insert(t);
     this->type = lockType;
-    cout << "added lock: " << t << " of type " << lockType << endl;
+    //cout << "added lock: " << t << " of type " << lockType << endl;
 }
 
 /* removes a lock to the variable held by transaction t */
@@ -41,7 +41,17 @@ void lockDetails::removeLock(string t)
 /* add a transaction to waiting queue */
 void lockDetails::addTransactionToWaitingQueue(Transaction* t)
 {
-    waitingQueue.push_back(t);
+    this->waitingQueue.push_back(t);
+}
+
+/* gets the first transaction queued at the waiting queue */
+Transaction* lockDetails::getTransactionFromWaitingQueue()
+{
+    if(this->waitingQueue.empty()) {
+        return nullptr;
+    } else {
+        return this->waitingQueue.front();
+    }
 }
 
 /* remove a transaction from waiting queue */
@@ -51,5 +61,5 @@ void lockDetails::removeTransactionFromWaitingQueue(Transaction* t)
     for(; i < this->waitingQueue.size(); ++i) {
         if(this->waitingQueue[i]->name == t->name) break;
     }
-    waitingQueue.erase(this->waitingQueue.begin() + i);
+    this->waitingQueue.erase(this->waitingQueue.begin() + i);
 }

@@ -190,7 +190,6 @@ string dataManager::read(Transaction* t, int var_id)
    of the variable */
 string dataManager::write(Transaction* t, int var_id, int value)
 {
-    cout << t->name << " entered dm write" << endl;
     vector<site*> sites = this->varSiteList[var_id];
     unordered_set<site*> write_to;
     unordered_set<site*> wait_from;
@@ -208,29 +207,30 @@ string dataManager::write(Transaction* t, int var_id, int value)
         //if already determined that there is lock conflict then just add t
         //to waiting queue
         if(conflict) {
-            cout << "adding " << t->name << " to site " << s->getSiteId() << " waitQ for var " << var_id << endl;
+            //cout << "adding " << t->name << " to site " << s->getSiteId() << " waitQ for var " << var_id << endl;
             s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
             continue;
         }
         //if lock wasn't previously free then can't write to any of the site
         //and t has to wait
         if(!s->isVariableFree(var_id)) {
+            /*
             cout << "at site " << s->getSiteId() << ", var " << var_id << " has lock type " << s->getLockType(var_id);
             for(auto lockOwner : s->getLockOwners(var_id)) {
                 cout << " by lockOwner: " << lockOwner << endl;
             }
+            */
             if(s->getLockOwners(var_id).size() == 1 && s->getLockOwners(var_id).count(t->name)) {
-                cout << s->getLockOwners(var_id).count(t->name) << endl;
+                //cout << s->getLockOwners(var_id).count(t->name) << endl;
                 //if previous read or write lock held by transaction t itself
                 //then can still write to the variable
                 write_to.insert(s);
                 continue;
             }
             conflict_transaction = *(s->getLockOwners(var_id).begin());
-            cout << "adding " << t->name << " to site " << s->getSiteId() << " waitQ for var " << var_id << endl;
+            //cout << "adding " << t->name << " to site " << s->getSiteId() << " waitQ for var " << var_id << endl;
             s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
             conflict = true;
-            if(conflict) cout << "conf" << endl;
             continue;
         }
         //can obtain write lock at site s
@@ -248,11 +248,11 @@ string dataManager::write(Transaction* t, int var_id, int value)
     for(auto s : write_to) {
         //add lock to transaction's successfully obtained lock list
         //list will have var_id and site_num
-        cout << "owned" << s->getSiteId() << endl;
+        //cout << "owned" << s->getSiteId() << endl;
         t->ownedLocks[var_id].insert(s->getSiteId());
         s->lockVariable(var_id, t->name, 2);
     }
-
+    /*
     for(auto it = t->ownedLocks.begin(); it != t->ownedLocks.end(); ++it) {
         cout << it->first << ": ";
         for(auto se : it->second) {
@@ -260,8 +260,8 @@ string dataManager::write(Transaction* t, int var_id, int value)
         }
         cout << endl;
     }
+    */
     t->varValueList[var_id] = value;
-    cout << "almost done dm write" << ", val: " << t->varValueList[var_id] << endl;
     return to_string(value);
 }
 
@@ -319,7 +319,10 @@ void dataManager::writeValueToSite(Transaction* t, int var_id, int value)
 {
     vector<site*> sites = this->varSiteList[var_id];
     unordered_set<int> affected_sites = t->ownedLocks[var_id];
-    for(auto site_id : affected_sites) {
+    //cout << "about to go thru affected_sites of " << var_id << endl;
+    //if(t->ownedLocks[var_id].size() == 0) cout << "affected_sites=0" << endl;
+    for(auto it = affected_sites.begin(); it != affected_sites.end(); ++it) {
+        int site_id = *it;
         site* s = this->sites[site_id - 1];
         if(s->getLockType(var_id) == 2) {
             s->setVariableValue(var_id, value);
@@ -364,13 +367,17 @@ unordered_set<int> dataManager::releaseLocks(Transaction* t)
         for(auto s : sites) {
             if(s->getIsRunning()) {
                 s->unlockVariable(var_id, t->name);
+                //cout << t->name << " unlocked " << var_id << " at site " << s->getSiteId() << " so lock type is now " << s->getLockType(var_id) << endl;
                 if(!s->isVariableFree(var_id)) {
                     //variable should now be free at all sites it is stored at
                     isFree = false;
                 }
             }
         }
-        if(isFree) freeVariables.insert(var_id);
+        if(isFree) {
+            freeVariables.insert(var_id);
+            t->freeVars.insert(var_id);
+        }
     }
     return freeVariables;
 }

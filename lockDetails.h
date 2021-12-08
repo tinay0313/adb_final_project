@@ -18,7 +18,7 @@ class lockDetails
     /* 0 is free, 1 is read lock, 2 is write lock */
     int type;
     unordered_set<string> owners;
-    vector<Transaction *> waitingQueue;
+    vector<Transaction* > waitingQueue;
 
 public:
     /* constructor */
@@ -59,7 +59,7 @@ public:
     void removeTransactionFromWaitingQueue(Transaction* t);
 
     /* gets the first transaction queued at the waiting queue */
-    Transaction* getTransactionFromWaitingQueue() { return waitingQueue.front(); }
+    Transaction* getTransactionFromWaitingQueue();
 
     /* removes the first transaction queued at the waiting queue */
     void removeFirstTransactionFromWaitingQueue() { waitingQueue.erase(waitingQueue.begin()); }

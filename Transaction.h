@@ -18,8 +18,6 @@ class Transaction {
         std::unordered_map<int, int> varValCache; // varID : val
         /* variable has accessed by the transaction before  */
         std::vector<int> varAccessedList;
-        /* list of variables that become free after locks hold by the transaction are released */
-        std::unordered_set<int> freeVars;
 
     public:
         Transaction(std::string name, bool readOnly, int startTime);
@@ -40,6 +38,8 @@ class Transaction {
         std::unordered_map<int, int> varValueList;
         /* key is var_id, value is all site(s) transaction successfully obtained locks for var_id */
         std::unordered_map<int, std::unordered_set<int>> ownedLocks;
+        /* list of variables that become free after locks hold by the transaction are released */
+        std::unordered_set<int> freeVars;
 
 
         /* get varValCache*/
