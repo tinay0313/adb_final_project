@@ -39,7 +39,6 @@ bool TransactionManager::detectDeadlock() {
     // abort the youngest
     if (!youngest.empty()) {
         TransactionManager::abort(youngest);
-        std::cout << "abort" << std::endl;
         return true;
     }
     return false;
@@ -56,6 +55,8 @@ bool TransactionManager::helper(std::string start, std::string target, std::unor
     }
     for (auto const& transactionBlocked : blockingGraph.at(start)) {
         if (visited.find(transactionBlocked) == visited.end()) {
+            //cout << transactionBlocked << endl;
+            //haven't seen this transaction in topological sort yet
             visited.insert(transactionBlocked);
             if (TransactionManager::helper(transactionBlocked, target, visited, blockingGraph)) {
                 return true;
@@ -71,17 +72,25 @@ void TransactionManager::executeNextTransaction(std::string tran) {
 
     // get first transaction from wating queue of the variable which the transaction has accessed before
     for (auto const& var : curTran->getFreeVars()) {
+        //cout << "free vars: " << var << endl;
         vector<site*> sites = DM.getVarSiteList()[var];
         //if there is a transaction in the waiting queue of the now free variables
         //the transaction name would be stored in nextTranName
         std::string nextTranName;
         for(auto s : sites) {
+            //don't check s's waiting queue if s is down
+            if(!s->getIsRunning()) continue;
+            //cout << "site: " << s->getSiteId() << endl;
             //no transaction at this site's waiting queue for variable var
-            if(s->getLockTable()[var]->getWaitingQueue().empty()) continue;
+            if(s->getLockTable()[var]->getWaitingQueue().empty()) {
+                //cout << "no waiting trans at site: " << s->getSiteId() << endl;
+                continue;
+            }
             nextTranName = s->getLockTable()[var]->getTransactionFromWaitingQueue()->name;
             //found the next waiting transaction
             if(nextTranName.length() > 0) break;
         }
+        //cout << nextTranName << endl;
         Transaction* nextTran = transactionList[nextTranName];
         /*
         auto it = std::find_if(instructionQueue.begin(), instructionQueue.end(),
@@ -109,12 +118,16 @@ void TransactionManager::executeNextTransaction(std::string tran) {
         }
         // erase instruction when completed successfully
         if (isSuccessful) {
+            //cout << "about to clear wait q" << endl;
             for(auto s : sites) {
-                s->getLockTable()[var]->removeTransactionFromWaitingQueue(nextTran);
+                if(!s->getIsRunning()) continue;
+                //cout << s->getSiteId() << endl;
+                if(s->getLockTable()[var]->getTransactionFromWaitingQueue()->name == nextTran->name)
+                    s->getLockTable()[var]->removeTransactionFromWaitingQueue(nextTran);
             }
-
             // auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextIns);
-            instructionQueue.erase(it);
+            
+            //instructionQueue.erase(it);
         }
         
     }
@@ -190,7 +203,7 @@ bool TransactionManager::read(std::string tran, std::string var) {
     } else {
         // non read-only
         res = DM.read(transaction, varID);
-        if (res.rfind("T")) {
+        if (res.rfind("T",0) == 0) {
             transaction->printLockConflict(tran);
             // update blockingGraph
             TransactionManager::addEdge(res, tran);
@@ -219,6 +232,9 @@ bool TransactionManager::read(std::string tran, std::string var) {
             instructionQueue.erase(it);
         }
     }
+    while (detectDeadlock()) {
+        std::cout << "Deadlock detected." << std::endl;
+    }
     return isSuccessful;
 }
 
@@ -228,17 +244,17 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
     varID = std::stoi(var.substr(1));
     std::string res = DM.write(transaction, varID, val);
 
-    std::cout << "tm got result= " << res << std::endl;
+    //std::cout << "tm got result= " << res << std::endl;
 
     bool isSuccessful = false;
 
     if (res.rfind("T",0) == 0) {
-        std::cout << "found T: " << res << std::endl;
+        //std::cout << "found T: " << res << std::endl;
         transaction->printLockConflict(tran);
         // update blockingGraph
         TransactionManager::addEdge(res, tran);
     } else if (res == "DOWN") {
-        std::cout << "found down: " << res << std::endl;
+        //std::cout << "found down: " << res << std::endl;
         transaction->printDownSite(tran);
     } else {
         std::cout << var << " can be updated to " << val << " after commit." << std::endl;
@@ -248,6 +264,8 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
         for (auto const& site: accessedSites){
             transaction->getSiteAccessedList().push_back(site);
         }
+        // update varValList
+        transaction->varValueList[varID] = val;
         isSuccessful = true;
     }
     // update varValList
@@ -260,6 +278,9 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
         Instruction nextIns = *it;
         instructionQueue.erase(it);
     }
+    while (detectDeadlock()) {
+        std::cout << "Deadlock detected." << std::endl;
+    }
     return isSuccessful;
 }
 
@@ -271,6 +292,7 @@ void TransactionManager::dump() {
 
 void TransactionManager::end(std::string tran) {
     Transaction* transaction = transactionList.at(tran);
+    
     if (transaction->toBeAborted) {
         TransactionManager::abort(tran);
     } else {
@@ -296,6 +318,7 @@ void TransactionManager::abort(std::string tran) {
 // todo why no match declaration?
 void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> varValueList) {
     pair<bool, unordered_set<int>> res = DM.commit(t); // already released locks
+
     bool success = res.first;
     t->getFreeVars() = res.second;
 
@@ -304,23 +327,31 @@ void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> var
 
         //Transaction* transaction = transactionList.at(t->name);
         
-        std::string tran = t->name;
-        // update blocking graph
-        TransactionManager::deleteEdge(tran);
-        // execute next transaction from waiting queue
-        TransactionManager::executeNextTransaction(tran);
-        // update transaction list
-        transactionList.erase(tran);
+        
     } else {
         std::cout << t->name << " commits failed" << std::endl;
     }
+    std::string tran = t->name;
+    // update blocking graph
+    //cout << "updating block graph" << endl;
+    TransactionManager::deleteEdge(tran);
+    // execute next transaction from waiting queue
+    //cout << "exec next trans" << endl;
+    TransactionManager::executeNextTransaction(tran);
+    // update transaction list
+    //cout << "update trans list" << endl;
+    transactionList.erase(tran);
 }
 
 
 void TransactionManager::fail(int siteID, int timeStamp) {    
     DM.fail(siteID, timeStamp);
+
     /* When a site fails, all transactions which ever accessed this site should be aborted in the end */
     for (auto const& tran : transactionList) {
+        if(tran.first == "") {
+            continue;
+        }
         Transaction* transaction = tran.second;
         if (transaction->isReadOnly || transaction->toBeAborted) {
             continue;

@@ -1,0 +1,9 @@
+begin(T1)
+begin(T2)
+R(T2, x2)
+x2: 20
+W(T1, x2, 202)
+Transaction: T1 waits because of a lock conflict.
+W(T2 x2, 302)
+x2 can be updated to 302 after commit.
+end(T1)

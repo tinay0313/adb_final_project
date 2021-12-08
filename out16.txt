@@ -1,0 +1,33 @@
+begin(T3)
+begin(T1)
+begin(T2)
+W(T3,x2,22)
+x2 can be updated to 22 after commit.
+W(T2,x4,44)
+x4 can be updated to 44 after commit.
+R(T3,x4)
+Transaction: T3 waits because of a lock conflict.
+end(T2)
+Sites 9, 10, 5, 6, 8, 4, 7, 3, 2, 1 were affected by this transaction
+Transaction T2 changed variable 4's value to 44
+T2 commits
+x4: 44
+end(T3)
+Sites 9, 10, 5, 6, 8, 4, 7, 3, 2, 1 were affected by this transaction
+Transaction T3 changed variable 2's value to 22
+T3 commits
+R(T1,x2)
+x2: 22
+end(T1)
+T1 commits
+dump()
+site 1 - x2: 22, x4: 44, x6: 60, x8: 80, x10: 100, x12: 120, x14: 140, x16: 160, x18: 180, x20: 200
+site 2 - x1: 10, x2: 22, x4: 44, x6: 60, x8: 80, x10: 100, x11: 110, x12: 120, x14: 140, x16: 160, x18: 180, x20: 200
+site 3 - x2: 22, x4: 44, x6: 60, x8: 80, x10: 100, x12: 120, x14: 140, x16: 160, x18: 180, x20: 200
+site 4 - x2: 22, x3: 30, x4: 44, x6: 60, x8: 80, x10: 100, x12: 120, x13: 130, x14: 140, x16: 160, x18: 180, x20: 200
+site 5 - x2: 22, x4: 44, x6: 60, x8: 80, x10: 100, x12: 120, x14: 140, x16: 160, x18: 180, x20: 200
+site 6 - x2: 22, x4: 44, x5: 50, x6: 60, x8: 80, x10: 100, x12: 120, x14: 140, x15: 150, x16: 160, x18: 180, x20: 200
+site 7 - x2: 22, x4: 44, x6: 60, x8: 80, x10: 100, x12: 120, x14: 140, x16: 160, x18: 180, x20: 200
+site 8 - x2: 22, x4: 44, x6: 60, x7: 70, x8: 80, x10: 100, x12: 120, x14: 140, x16: 160, x17: 170, x18: 180, x20: 200
+site 9 - x2: 22, x4: 44, x6: 60, x8: 80, x10: 100, x12: 120, x14: 140, x16: 160, x18: 180, x20: 200
+site 10 - x2: 22, x4: 44, x6: 60, x8: 80, x9: 90, x10: 100, x12: 120, x14: 140, x16: 160, x18: 180, x19: 190, x20: 200

@@ -155,13 +155,12 @@ string dataManager::read(Transaction* t, int var_id)
         }
     }
     if(conflict) return conflict_transaction;
+    
     if(down_sites == num_sites) {
-        for(auto s : wait_from) {
-            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
-        }
         return "DOWN";
     } else if (down_sites + invalid_read_sites == num_sites) {
         for(auto s : wait_from) {
+            if(!s->getIsRunning()) continue;
             s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
         }
         return "DOWN_INVALID";
@@ -221,11 +220,16 @@ string dataManager::write(Transaction* t, int var_id, int value)
             }
             */
             if(s->getLockOwners(var_id).size() == 1 && s->getLockOwners(var_id).count(t->name)) {
-                //cout << s->getLockOwners(var_id).count(t->name) << endl;
-                //if previous read or write lock held by transaction t itself
-                //then can still write to the variable
-                write_to.insert(s);
-                continue;
+                //if previous read or write lock held by transaction t itself and no transaction waiting
+                //in waiting queue then can still write to the variable
+                if(s->getLockTable()[var_id]->getWaitingQueue().empty()) {
+                    write_to.insert(s);
+                    continue;
+                } else {
+                    conflict_transaction = s->getLockTable()[var_id]->getTransactionFromWaitingQueue()->name;
+                    conflict = true;
+                    continue;
+                }
             }
             conflict_transaction = *(s->getLockOwners(var_id).begin());
             //cout << "adding " << t->name << " to site " << s->getSiteId() << " waitQ for var " << var_id << endl;
@@ -294,6 +298,7 @@ bool dataManager::checkValidReadWrite(Transaction* t, int var_id, unordered_set<
     //sites_to_verify are sites that transaction t obtained locks for when that particular
     //read/write operation was processed
     for(auto site_id : sites_to_verify) {
+        //cout << "site: " << site_id << endl;
         site* s = this->sites[site_id - 1];
         if(s->getIsRunning()) {
             if(!s->getLockOwners(var_id).count(t->name)) {
@@ -372,6 +377,10 @@ unordered_set<int> dataManager::releaseLocks(Transaction* t)
                     //variable should now be free at all sites it is stored at
                     isFree = false;
                 }
+                if((s->getLockOwners(var_id).size() == 1) && !s->getLockTable()[var_id]->getWaitingQueue().empty() && 
+                    (s->getLockTable()[var_id]->getTransactionFromWaitingQueue()->name == *(s->getLockOwners(var_id).begin()))) {
+                        isFree = true;
+                    }
             }
         }
         if(isFree) {

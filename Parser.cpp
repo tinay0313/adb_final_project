@@ -10,8 +10,8 @@
 
 Parser::Parser(std::string *infile):
     TM(),
-    delimiters("[(,)]")
-
+    //delimiters("[(,)]")
+    delimiters("[\\s+(,)]")
 {   
     // instruction infos
     std::string tran;
@@ -28,7 +28,16 @@ Parser::Parser(std::string *infile):
       
     while (getline(inputFile, curLine) && !inputFile.eof()){
         // get instruction infos
-        std::vector<std::string> tokens = Parser::parse(curLine, delimiters);
+        std::vector<std::string> raw = parse(curLine, delimiters);
+        std::vector<std::string> tokens;
+        for (auto const& token: raw) {
+            //std::cout << token << std::endl;
+            if (token == "") {
+                continue;
+            } else {
+                tokens.push_back(token);
+            }
+        }
         // abort the youngest transaction if a deadlock is founded
         while (TM.detectDeadlock()) {
             std::cout << "Deadlock detected." << std::endl;
@@ -52,9 +61,6 @@ Parser::Parser(std::string *infile):
             val = std::stoi(tokens.at(3));  //convert to int
             TM.enqueueWriteInstruction(tran, var, val);
             TM.updateVarAccessedList(tran, var);
-            while (TM.detectDeadlock()) {
-                std::cout << "Deadlock detected." << std::endl;
-            }
         } else if (curLine.rfind("dump", 0) == 0) {
             TM.dump();
         } else if (curLine.rfind("end", 0) == 0) {
@@ -65,6 +71,7 @@ Parser::Parser(std::string *infile):
             TM.fail(site, TM.timeStamp);
         } else if (curLine.rfind("recover", 0) == 0) {
             site = std::stoi(tokens.at(1));
+            cout << "trying to recover" << endl;
             TM.recover(site);
         } else {
             std::cout << "invalid" << std::endl;
