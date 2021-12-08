@@ -85,7 +85,8 @@ void dataManager::generateVarValCache(Transaction* t)
             for(auto it = variables.begin(); it != variables.end(); ++it) {
                 int var_id = it->first;
                 if(t->getVarValCache().count(var_id)) {
-                    //already cached variable value at some other valid site
+                    //already cached variable value using variable
+                    //stored at some other valid site
                     continue;
                 }
                 if(s->isVariableValidForRead(var_id)) {
@@ -199,7 +200,6 @@ string dataManager::read(Transaction* t, int var_id)
             t->ownedLocks[var_id].insert(s->getSiteId());
             s->lockVariable(var_id, t, 1);
         }
-        printf("%s: %d", s->getVariable(var_id)->getName(), s->getVariable(var_id)->getValue());
         return to_string(s->getVariable(var_id)->getValue());
     }
 }
