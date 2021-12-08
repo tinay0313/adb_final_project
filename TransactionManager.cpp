@@ -65,8 +65,8 @@ bool TransactionManager::helper(std::string start, std::string target, std::unor
 
 
 void TransactionManager::executeNextTransaction(std::string tran) {
-
     Transaction curTran = transactionList.at(tran);
+    
     bool isSuccessful = false;
 
     // get first transaction from wating queue of the variable which the transaction has accessed before
@@ -180,11 +180,11 @@ bool TransactionManager::read(std::string tran, std::string var) {
 
 
 bool TransactionManager::write(std::string tran, std::string var, int val) {
-    
+    std::cout << "enetered tm write" << std::endl;
     Transaction transaction = transactionList.at(tran);
     varID = std::stoi(var.substr(1));
-
-    std::string res = DM.write(&transaction, varID);
+    std::cout << "calling dm write" << std::endl;
+    std::string res = DM.write(&transaction, varID, val);
     bool isSuccessful = false;
 
     if (res.rfind("T")) {
@@ -211,7 +211,7 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
 }
 
 
-void TransactionManager::dump() {    
+void TransactionManager::dump() {
     DM.dump();
 }
 
@@ -232,13 +232,12 @@ void TransactionManager::abort(std::string tran) {
     Transaction transaction = transactionList.at(tran);
     // release locks hold by the transaction
     transaction.getFreeVars() = DM.releaseLocks(&transaction);
-    // update transaction list
-    transactionList.erase(tran);
     // update blocking graph
     TransactionManager::deleteEdge(tran);
     // execute next transaction from waiting queue
     TransactionManager::executeNextTransaction(tran);
-    
+    // update transaction list
+    transactionList.erase(tran);
 }
 
 // todo why no match declaration?
@@ -251,13 +250,14 @@ void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> var
         std::cout << t->name << " commits" << std::endl;
 
         Transaction transaction = transactionList.at(t->name);
-        // update transaction list
+        
         std::string tran = t->name;
-        transactionList.erase(tran);
         // update blocking graph
         TransactionManager::deleteEdge(tran);
         // execute next transaction from waiting queue
         TransactionManager::executeNextTransaction(tran);
+        // update transaction list
+        transactionList.erase(tran);
     } else {
         std::cout << t->name << " commits failed" << std::endl;
     }
@@ -304,6 +304,7 @@ void TransactionManager::enqueueWriteInstruction(std::string tran, std::string v
         val
     };
     instructionQueue.push_back(ins);
+    std::cout << "enqueued write instruction" << std::endl;
 }
 
 

@@ -18,7 +18,6 @@ int main(int argc, char** argv) {
    // inputfile
    std::string inputFile;
    inputFile = argv[1];
-   std::cout << "inputFile: " << inputFile << std::endl;
 
    Parser parser = Parser(&inputFile);
   

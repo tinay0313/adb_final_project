@@ -59,7 +59,7 @@ public:
        when attempting to write to the database.
        If can get write locks then return list of site numbers,
        otherwise return blockers */
-    string write(Transaction* t, int var_id);
+    string write(Transaction* t, int var_id, int value);
 
     /* commit a transaction
         2nd param is MAP_OF_VARIABLE_IDX_AND_VALUES_THAT_SHOULD_BE_UPDATED_TO_EACH_VARIABLE */

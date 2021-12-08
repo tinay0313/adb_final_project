@@ -36,7 +36,6 @@ dataManager::dataManager()
    sorted per site with all values per site in ascending order by variable name. */
 void dataManager::dump()
 {
-    cout << "DataManager dump:" << endl;
     for(int i = 0; i < sites.size(); ++i) {
         site* s = this->sites[i];
         printf("site %d - ", s->getSiteId());
@@ -190,8 +189,9 @@ string dataManager::read(Transaction* t, int var_id)
    return CONFLICT if one site has a read or write lock on the variable
    return the variable's id as a string if can write lock all available copies
    of the variable */
-string dataManager::write(Transaction* t, int var_id)
+string dataManager::write(Transaction* t, int var_id, int value)
 {
+    cout << "entered dm wrte" << endl;
     vector<site*> sites = this->varSiteList[var_id];
     unordered_set<site*> write_to;
     unordered_set<site*> wait_from;
@@ -214,6 +214,7 @@ string dataManager::write(Transaction* t, int var_id)
         }
         //if lock wasn't previously free then can't write to any of the site
         //and t has to wait
+        cout << s->getSiteId() << "should reach here" << endl;
         if(!s->isVariableFree(var_id)) {
             if(s->getLockOwners(var_id).size() == 1 && s->getLockOwners(var_id).count(t)) {
                 //if previous read or write lock held by transaction t itself
@@ -244,6 +245,7 @@ string dataManager::write(Transaction* t, int var_id)
         t->ownedLocks[var_id].insert(s->getSiteId());
         s->lockVariable(var_id, t, 2);
     }
+    t->varValueList[var_id] = value;
     return to_string(var_id);
 }
 
@@ -260,7 +262,7 @@ pair<bool, unordered_set<int>> dataManager::commit(Transaction* t)
     }
     //if variables are still valid write, commit all the values in the map
     if(commit_success) {
-        for(auto it = t->getVarValueList().begin(); it != t->getVarValueList().end(); ++it) {
+        for(auto it = t->varValueList.begin(); it != t->varValueList.end(); ++it) {
             int var_id = it->first;
             int var_value = it->second;
             this->writeValueToSite(t, var_id, var_value);

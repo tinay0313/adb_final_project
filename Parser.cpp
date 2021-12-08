@@ -27,7 +27,6 @@ Parser::Parser(std::string *infile):
     inputFile.open(*infile);
       
     while (getline(inputFile, curLine) && !inputFile.eof()){
-        std::cout << curLine << std::endl;
         // get instruction infos
         std::vector<std::string> tokens = Parser::parse(curLine, delimiters);
 
@@ -65,10 +64,11 @@ Parser::Parser(std::string *infile):
             site = std::stoi(tokens.at(1));
             TM.recover(site);
         } else {
+            std::cout << "invalid" << std::endl;
             continue;
         }
         // advances timestamp by one upon reading newline from input.
-        TM.timeStamp ++;
+        TM.timeStamp++;
     }
     inputFile.close();
 }
