@@ -60,7 +60,6 @@ void site::recoverSite()
     }
     for(auto it = this->canReadVar.begin(); it != this->canReadVar.end(); ++it) {
         int var_id = it->first;
-        bool var_valid = it->second;
         if(this->variableList[var_id]->getIsReplicated()) {
             this->setCanReadVar(var_id, false);
         } else {

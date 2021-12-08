@@ -10,8 +10,8 @@ using namespace std;
 /* variable Constructor */
 variable::variable(int i, int value)
 {
-    this->idx = idx;
-    this->name = "x" + to_string(idx);
+    this->idx = i;
+    this->name = "x" + to_string(i);
     this->isReplicated = false;
     variable::setValue(value);
     variable::setReadableTrue();
