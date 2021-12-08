@@ -106,102 +106,82 @@ void dataManager::generateVarValCache(Transaction* t)
    of the variable */
 string dataManager::read(Transaction* t, int var_id)
 {
-    if(t->isReadOnly) {
-        if(t->getVarValCache().empty()) {
-            //cache all variable values at start of RO transaction t
-            this->generateVarValCache(t);
-            if(t->getVarValCache().count(var_id)) {
-                return to_string(t->getVarValCache()[var_id]);
-            } else {
-                //transaction should abort
-                return "ABORT";
-            }
+    //t is not RO transaction
+    vector<site*> sites = this->varSiteList[var_id];
+    unordered_set<site*> read_from;
+    unordered_set<site*> wait_from;
+    bool conflict = false;
+    string conflict_transaction;
+    int num_sites = sites.size();
+    int down_sites = 0;
+    int invalid_read_sites = 0;
+    for(auto s : sites) {
+        //increment down_sites if site s is down
+        if(!s->getIsRunning()) {
+            wait_from.insert(s);
+            down_sites++;
+            continue;
+        }
+        //increment invalid_read_sites if variable not valid for read
+        //at site s
+        //a variable v at site s would be invalid read if site just recovered and
+        //v is a replicated variable and no new writes have been commited to v yet
+        //at site s
+        if(!s->isVariableValidForRead(var_id)) {
+            wait_from.insert(s);
+            invalid_read_sites++;
+            continue;
+        }
+        //at this point, a variable may or may not be replicated
+        //but even if the variable is replicated, it is valid for read
+        if(conflict) {
+            //another transaction holds a write lock on variable at site s so conflict
+            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+            continue;
+        }
+        if(s->getLockType(var_id) != 2) {
+            //no write lock on variable so can read variable at site s
+            read_from.insert(s);
         } else {
-            if(t->getVarValCache().count(var_id)) {
-                return to_string(t->getVarValCache()[var_id]);
-            } else {
-                //transaction should abort
-                return "ABORT";
+            //variable is write-locked
+            if(s->getLockOwners(var_id).count(t)) {
+                //write lock held by transaction t itself so can still read the value
+                return to_string(s->getVariable(var_id)->getValue());
             }
+            //write lock held by transaction that is not t so lock conflict
+            //and t has to wait
+            Transaction* conf = *(s->getLockOwners(var_id).begin());
+            conflict_transaction = conf->name;
+            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+            conflict = true;
         }
-    } else {
-        //t is not RO transaction
-        vector<site*> sites = this->varSiteList[var_id];
-        unordered_set<site*> read_from;
-        unordered_set<site*> wait_from;
-        bool conflict = false;
-        string conflict_transaction;
-        int num_sites = sites.size();
-        int down_sites = 0;
-        int invalid_read_sites = 0;
-        for(auto s : sites) {
-            //increment down_sites if site s is down
-            if(!s->getIsRunning()) {
-                wait_from.insert(s);
-                down_sites++;
-                continue;
-            }
-            //increment invalid_read_sites if variable not valid for read
-            //at site s
-            //a variable v at site s would be invalid read if site just recovered and
-            //v is a replicated variable and no new writes have been commited to v yet
-            //at site s
-            if(!s->isVariableValidForRead(var_id)) {
-                wait_from.insert(s);
-                invalid_read_sites++;
-                continue;
-            }
-            //at this point, a variable may or may not be replicated
-            //but even if the variable is replicated, it is valid for read
-            if(conflict) {
-                //another transaction holds a write lock on variable at site s so conflict
-                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
-                continue;
-            }
-            if(s->getLockType(var_id) != 2) {
-                //no write lock on variable so can read variable at site s
-                read_from.insert(s);
-            } else {
-                //variable is write-locked
-                if(s->getLockOwners(var_id).count(t)) {
-                    //write lock held by transaction t itself so can still read the value
-                    return to_string(s->getVariable(var_id)->getValue());
-                }
-                //write lock held by transaction that is not t so lock conflict
-                //and t has to wait
-                Transaction* conf = *(s->getLockOwners(var_id).begin());
-                conflict_transaction = conf->name;
-                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
-                conflict = true;
-            }
-        }
-        if(conflict) return conflict_transaction;
-        if(down_sites == num_sites) {
-            for(auto s : wait_from) {
-                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
-            }
-            return "DOWN";
-        } else if (down_sites + invalid_read_sites == num_sites) {
-            for(auto s : wait_from) {
-                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
-            }
-            return "DOWN_INVALID";
-        } else if (invalid_read_sites == num_sites) {
-            for(auto s : wait_from) {
-                s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
-            }
-            return "INVALID";
-        }
-        //can obtain read locks at sites that are up and have valid, readable values
-        site* s = *(read_from.begin());
-        for(auto s : read_from) {
-            //add lock to transaction's successfully obtained lock list
-            //list will have var_id and site_num
-            t->ownedLocks[var_id].insert(s->getSiteId());
-            s->lockVariable(var_id, t, 1);
-        }
-        return to_string(s->getVariable(var_id)->getValue());
     }
+    if(conflict) return conflict_transaction;
+    if(down_sites == num_sites) {
+        for(auto s : wait_from) {
+            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+        }
+        return "DOWN";
+    } else if (down_sites + invalid_read_sites == num_sites) {
+        for(auto s : wait_from) {
+            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+        }
+        return "DOWN_INVALID";
+    } else if (invalid_read_sites == num_sites) {
+        for(auto s : wait_from) {
+            s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
+        }
+        return "INVALID";
+    }
+    //can obtain read locks at sites that are up and have valid, readable values
+    site* s = *(read_from.begin());
+    for(auto s : read_from) {
+        //add lock to transaction's successfully obtained lock list
+        //list will have var_id and site_num
+        t->ownedLocks[var_id].insert(s->getSiteId());
+        s->lockVariable(var_id, t, 1);
+    }
+    return to_string(s->getVariable(var_id)->getValue());
 }
 
 /* determines whether a transaction t can get the requested lock
