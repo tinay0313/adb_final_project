@@ -29,7 +29,7 @@ Parser::Parser(std::string *infile):
     while (getline(inputFile, curLine) && !inputFile.eof()){
         // get instruction infos
         std::vector<std::string> tokens = Parser::parse(curLine, delimiters);
-
+        std::cout << curLine << std::endl;
         // abort the youngest transaction if a deadlock is founded
         while (TM.detectDeadlock()) {
             std::cout << "Deadlock detected." << std::endl;

@@ -21,13 +21,14 @@ TransactionManager::TransactionManager():
 
 
 bool TransactionManager::detectDeadlock() {
-
     std::string youngest;
     int youngestStartTime = INT_MAX;
-
+    if(blockingGraph.empty()) std::cout << "empty block graph" << std::endl;
     for (auto const& blocking : blockingGraph) {
+        std::cout << blocking.first << std::endl;
         std::unordered_set<std::string> visited;
         std::string start = blocking.first;
+        std::cout << start << std::endl;
         // dfs
         if (TransactionManager::helper(start, start, visited, blockingGraph)) {
             Transaction transaction = transactionList.at(start);
@@ -41,6 +42,7 @@ bool TransactionManager::detectDeadlock() {
     // abort the youngest
     if (!youngest.empty()) {
         TransactionManager::abort(youngest);
+        std::cout << "abort" << std::endl;
         return true;
     }
     return false;
@@ -185,13 +187,18 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
     varID = std::stoi(var.substr(1));
     std::cout << "calling dm write" << std::endl;
     std::string res = DM.write(&transaction, varID, val);
+
+    std::cout << "tm got result= " << res << std::endl;
+
     bool isSuccessful = false;
 
-    if (res.rfind("T")) {
+    if (res.rfind("T",0) == 0) {
+        std::cout << "found T: " << res << std::endl;
         transaction.printLockConflict(tran);
         // update blockingGraph
         TransactionManager::addEdge(res, tran);
     } else if (res == "DOWN") {
+        std::cout << "founud down: " << res << std::endl;
         transaction.printDownSite(tran);
     } else {
         std::cout << var << " can be updated to " << val << " after commit." << std::endl;
@@ -206,7 +213,7 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
     // update varValList
     transaction.varValueList[varID] = val;
     //transaction.getVarValueList()[varID] = val;
-
+    std::cout << "almost done with tm write" << std::endl;
     return isSuccessful;
 }
 
@@ -293,6 +300,7 @@ void TransactionManager::enqueueReadInstruction(std::string tran, std::string va
         0
     };
     instructionQueue.push_back(ins);
+    read(tran, var);
 }
 
 
@@ -304,7 +312,7 @@ void TransactionManager::enqueueWriteInstruction(std::string tran, std::string v
         val
     };
     instructionQueue.push_back(ins);
-    std::cout << "enqueued write instruction" << std::endl;
+    write(tran, var, val);
 }
 
 

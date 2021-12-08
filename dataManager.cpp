@@ -214,7 +214,6 @@ string dataManager::write(Transaction* t, int var_id, int value)
         }
         //if lock wasn't previously free then can't write to any of the site
         //and t has to wait
-        cout << s->getSiteId() << "should reach here" << endl;
         if(!s->isVariableFree(var_id)) {
             if(s->getLockOwners(var_id).size() == 1 && s->getLockOwners(var_id).count(t)) {
                 //if previous read or write lock held by transaction t itself
@@ -242,11 +241,13 @@ string dataManager::write(Transaction* t, int var_id, int value)
     for(auto s : write_to) {
         //add lock to transaction's successfully obtained lock list
         //list will have var_id and site_num
+        cout << "owned" << s->getSiteId() << endl;
         t->ownedLocks[var_id].insert(s->getSiteId());
         s->lockVariable(var_id, t, 2);
     }
     t->varValueList[var_id] = value;
-    return to_string(var_id);
+    cout << "almost done dm write" << ", val: " << t->varValueList[var_id] << endl;
+    return to_string(value);
 }
 
 /* commit a transaction. Returns true if successfully commit and false otherwise */
