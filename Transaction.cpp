@@ -25,3 +25,11 @@ void Transaction::printLockConflict(std::string tran) {
 void Transaction::printDownSite(std::string tran) {
     std::cout << "Transaction: " << tran << " waits because of a down site." << std::endl;
 }
+
+void Transaction::printInvalid(std::string tran) {
+    std::cout << "Transaction: " << tran << " waits because of a invalid variable." << std::endl;
+}
+
+void Transaction::printDownInvalid(std::string tran) {
+    std::cout << "Transaction: " << tran << " waits because of a down site and invalid variable." << std::endl;
+}

@@ -5,7 +5,7 @@
 # declare variables
 CC = g++ -std=c++11
 CPPFLAGS = -c -Wall
-OFILES = main.o Parser.o TransactionManager.o Transaction.o dataManager.o site.o variable.o lockDetails.o
+OFILES = main.o Parser.o TransactionManager.o dataManager.o site.o variable.o lockDetails.o Transaction.o 
 
 # commands
 main : $(OFILES)
