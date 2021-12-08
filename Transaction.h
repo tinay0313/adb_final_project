@@ -23,7 +23,6 @@ class Transaction {
         std::unordered_set<int> freeVars;
 
     public:
-
         Transaction(std::string name, bool readOnly, int startTime);
 
 
