@@ -6,6 +6,8 @@
 #define TRANSACTION
 
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <map>
 #include <iostream>
@@ -20,9 +22,13 @@ class Transaction {
         /* variable has accessed by the transaction before  */
         std::vector<int> varAccessedList;
         /* saves all the the sites the transaction had accessed */
-        std::vector<int> siteAccessedList;
+        std::unordered_set<int> siteAccessedList;
         /* save the value the transaction want to write to the variable */
         std::unordered_map<int, int> varValueList;
+        /* key is var_id, value is all site(s) transaction successfully obtained locks for var_id */
+        std::unordered_map<int, std::unordered_set<int>> ownedLocks;
+        /* list of variables that become free after locks hold by the transaction are released */
+        std::unordered_set<int> freeVars;
 
     public:
 
@@ -49,7 +55,12 @@ class Transaction {
         std::vector<int> getSiteAccessedList();
         /* get varValueList*/
         std::unordered_map<int, int> getVarValueList();
+        /* get ownedLocks*/
+        std::unordered_map<int, std::unordered_set<int>> getOwnedLocks();
+        /* get freeVars*/
+        std::unordered_map<int, std::unordered_set<int>> getFreeVars();
         
+
         /* prints message every time transaction waits because of a lock conflict */
         void printLockConflict(std::string tran);
         /* prints message every time transaction waits because of a down site */

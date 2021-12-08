@@ -78,7 +78,7 @@ class TransactionManager {
         3. update owners
         4. prints transaction name upon commit
         */
-        void commit(Transaction* t, unordered_map<int, int> variableValueMap);
+        void commit(Transaction* t, std::unordered_map<int, int> varValueList);
         void fail(int siteID, int timeStamp);
         void recover(int siteID);
         /* enqueue read/write enqueueReadInstruction to instructionQueue */

@@ -15,7 +15,6 @@ TransactionManager::TransactionManager():
     blockingGraph(),
     transactionList(),
     instructionQueue()
-    
 {};
 
 
@@ -68,7 +67,7 @@ void TransactionManager::executeNextTransaction(std::string tran) {
     bool isSuccessful = false;
 
     // get first transaction from wating queue of the variable which the transaction has accessed before
-    for (auto const& var : curTran.getVarAccessedList()) {
+    for (auto const& var : curTran.getFreeVars()) {
         Transaction* nextTran = var.getLock().getTransactionFromWaitingQueue();
         Instruction nextIns = instructionQueue.at(nextTran->name);
 
@@ -119,8 +118,7 @@ bool TransactionManager::readRO(std::string tran, std::string var) {
     return false;
 }
 
-// todo blocker
-// todo site accessed
+
 bool TransactionManager::read(std::string tran, std::string var) {
 
     Transaction transaction = transactionList.at(tran);
@@ -128,26 +126,17 @@ bool TransactionManager::read(std::string tran, std::string var) {
 
     std::string res;
     bool isSuccessful = false;
-
+    // read-only
     if (transaction.isReadOnly) {
         isSuccessful = TransactionManager::readRO(tran, var);
     }
-
-    // non-readOnly
+    // non read-only
     res = DM.read(&tran, varID);
 
-    if (res == "CONFLICT") {
+    if (res.rfind("T")) {
         transaction.printLockConflict(tran);
         // update blockingGraph
-        for (auto & site : DM.getSites()) {
-            if (site->getIsRunning() & site->getAllVariables().count(varID)!= 0
-                & site->isVariableValidForRead(varID) & site->getLockType(varID) == 1
-                || site->getLockType(varID) == 2) {
-                    std::string blocker = site->getVariable(varID).getLock().getOwners().name;
-                    // add edage
-                    TransactionManager::addEdge(blocker, tran);
-            }
-        }
+        TransactionManager::addEdge(res, tran);
     } else if (res == "ABORT") {
         TransactionManager::abort(tran);
     } else if (res == "DOWN") {
@@ -158,6 +147,12 @@ bool TransactionManager::read(std::string tran, std::string var) {
         transaction.printDownInvalid(tran);
     } else {
         std::cout << var << ": " << res << std::endl;
+        // get all accessed sites
+        std::unordered_set<int> accessedSites = transaction.getOwnedLocks().at(varID);
+        // update SiteAccessedList
+        for (auto const& site: accessedSites){
+            transaction.getSiteAccessedList().insert(site);
+        }
         isSuccessful = true;
     }
     return isSuccessful;
@@ -172,21 +167,20 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
     std::string res = DM.write(&tran, varID, val);
     bool isSuccessful = false;
 
-    if (res == "CONFLICT") {
+    if (res.rfind("T")) {
         transaction.printLockConflict(tran);
         // update blockingGraph
-        for (auto & site : DM.getSites()) {
-            if (site->getIsRunning() & site->getAllVariables().count(varID)!= 0
-                & site->isVariableValidForRead(varID) & site->getLockType(varID) == 2) {
-                    std::string blocker = site->getVariable(varID).getLock().getOwners().name;
-                    // add edage
-                    TransactionManager::addEdge(blocker, tran);
-            }
-        }
+        TransactionManager::addEdge(res, tran);
     } else if (res == "DOWN") {
         transaction.printDownSite(tran);
     } else {
         std::cout << var << " can be updated to " << val << " after commit." << std::endl;
+        // get all accessed sites
+        std::unordered_set<int> accessedSites = transaction.getOwnedLocks().at(varID);
+        // update SiteAccessedList
+        for (auto const& site: accessedSites){
+            transaction.getSiteAccessedList().insert(site);
+        }
         isSuccessful = true;
     }
     // update varValList
@@ -213,21 +207,28 @@ void TransactionManager::end(std::string tran) {
 
 void TransactionManager::abort(std::string tran) {
     std::cout << tran << " aborts" << std::endl;
+    
+    Transaction transaction = transactionList.at(tran);
+    // release locks hold by the transaction
+    transaction.getFreeVars() = DM.releaseLocks(tran);
     // update transaction list
     transactionList.erase(tran);
     // update blocking graph
     TransactionManager::deleteEdge(tran);
     // execute next transaction from waiting queue
     TransactionManager::executeNextTransaction(tran);
-    // release locks hold by transaction
-    DM.releaseLocks(tran);
+    
 }
 
-
-void TransactionManager::commit(Transaction* t, unordered_map<int, int> varValueList) {
+// todo why no match declaration?
+void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> varValueList) {
     bool success = DM.commit(t, varValueList);
     if (success) {
         std::cout << t->name << " commits" << std::endl;
+
+        Transaction transaction = transactionList.at(t->name);
+        // release locks hold by the transaction
+        transaction.getFreeVars() = DM.releaseLocks(t->name);
         // update transaction list
         std::string tran = t->name;
         transactionList.erase(tran);
@@ -236,7 +237,7 @@ void TransactionManager::commit(Transaction* t, unordered_map<int, int> varValue
         // execute next transaction from waiting queue
         TransactionManager::executeNextTransaction(tran);
         // release locks hold by transaction
-        DM.releaseLocks(tran);
+        std::unordered_set<int> freeVars = DM.releaseLocks(tran);
     } else {
         std::cout << t->name << " commits failed" << std::endl;
     }
@@ -251,7 +252,7 @@ void TransactionManager::fail(int siteID, int timeStamp) {
         if (transaction.isReadOnly || transaction.toBeAborted) {
             continue;
         }
-        if (std::find(transaction.getSiteAccessedList().begin(), transaction.getSiteAccessedList.end(),
+        if (std::find(transaction.getSiteAccessedList().begin(), transaction.getSiteAccessedList().end(),
             siteID)!=transaction.getSiteAccessedList().end()) {
                 transaction.toBeAborted = true;
         }
