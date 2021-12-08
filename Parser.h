@@ -22,7 +22,7 @@ class Parser {
 
         std::string delimiters;
         /* Parse the input file into the required format for the transaction manager. */ 
-        std::vector<std::string> parse(std::string instruction, std::string delimiters);
+        std::vector<std::string> parse(std::string curLine);
 };
 
 

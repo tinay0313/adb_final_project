@@ -6,6 +6,8 @@
 #include "TransactionManager.h"
 
 #include <regex>
+#include <iostream>
+#include <string>
 
 
 Parser::Parser(std::string *infile):
@@ -28,16 +30,8 @@ Parser::Parser(std::string *infile):
       
     while (getline(inputFile, curLine) && !inputFile.eof()){
         // get instruction infos
-        std::vector<std::string> raw = parse(curLine, delimiters);
-        std::vector<std::string> tokens;
-        for (auto const& token: raw) {
-            //std::cout << token << std::endl;
-            if (token == "") {
-                continue;
-            } else {
-                tokens.push_back(token);
-            }
-        }
+        std::vector<std::string> tokens = parse(curLine);
+        
         // abort the youngest transaction if a deadlock is founded
         while (TM.detectDeadlock()) {
             std::cout << "Deadlock detected." << std::endl;
@@ -82,9 +76,48 @@ Parser::Parser(std::string *infile):
     inputFile.close();
 }
 
-std::vector<std::string> Parser::parse(std::string instruction, std::string delimiters) {
+std::vector<std::string> Parser::parse(std::string curLine) {
+    std::vector<std::string> raw;
+    std::vector<std::string> tokens;
+
+    std::size_t prev = 0, pos;
+    while ((pos = curLine.find_first_of(" (,)", prev)) != std::string::npos)
+    {
+        if (pos > prev)
+            raw.push_back(curLine.substr(prev, pos-prev));
+        prev = pos+1;
+    }
+    if (prev < curLine.length())
+        raw.push_back(curLine.substr(prev, std::string::npos));
+
+    for (auto const& token: raw) {
+        if (token == "") {
+            continue;
+        } else {
+            tokens.push_back(token);
+        }
+    }
+    
+    /*
+    std::stringstream stringStream(instruction);
+    std::string line;
+    std::vector<std::string> tokens;
+    while(std::getline(stringStream, line)) 
+    {
+        std::size_t prev = 0, pos;
+        while ((pos = line.find_first_of(delimiters, prev)) != std::string::npos)
+        {
+            if (pos > prev)
+                tokens.push_back(line.substr(prev, pos-prev));
+            prev = pos+1;
+        }
+        if (prev < line.length())
+            tokens.push_back(line.substr(prev, std::string::npos));
+    }
+    
     std::regex re(delimiters);
     std::sregex_token_iterator first{instruction.begin(), instruction.end(), re, -1}, last;
     std::vector<std::string> tokens{first, last};
+    */
     return tokens;
 }
