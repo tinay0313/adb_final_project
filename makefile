@@ -17,11 +17,8 @@ main.o: main.cpp Parser.h
 Parser.o: Parser.cpp Parser.h TransactionManager.h
 	$(CC) $(CPPFLAGS) Parser.cpp
 
-TransactionManager.o: TransactionManager.cpp TransactionManager.h Transaction.h
+TransactionManager.o: TransactionManager.cpp TransactionManager.h Transaction.h dataManager.h
 	$(CC) $(CPPFLAGS) TransactionManager.cpp
-
-Transaction.o: Transaction.cpp Transaction.h dataManager.h
-	$(CC) $(CPPFLAGS) Transaction.cpp
 
 dataManager.o: dataManager.cpp dataManager.h variable.h site.h Transaction.h lockDetails.h
 	$(CC) $(CPPFLAGS) dataManager.cpp
@@ -34,6 +31,9 @@ variable.o: variable.cpp variable.h lockDetails.h
 
 lockDetails.o: lockDetails.cpp lockDetails.h Transaction.h
 	$(CC) $(CPPFLAGS) lockDetails.cpp
+
+Transaction.o: Transaction.cpp Transaction.h
+	$(CC) $(CPPFLAGS) Transaction.cpp
 
 clean:
 	rm -f main *.o *~

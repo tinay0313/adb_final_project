@@ -6,6 +6,8 @@
 #include "Transaction.h"
 
 #include <cstddef>
+#include <climits>
+#include <algorithm>
 
 
 TransactionManager::TransactionManager():
@@ -17,7 +19,7 @@ TransactionManager::TransactionManager():
     instructionQueue()
 {};
 
-
+//todo RETURN VALUE?
 bool TransactionManager::detectDeadlock() {
 
     std::string youngest;
@@ -43,10 +45,10 @@ bool TransactionManager::detectDeadlock() {
 }
 
 
-// todo why no match declaration?
+// todo return value?
 bool TransactionManager::helper(std::string start, std::string target, std::unordered_set<std::string> visited,
                                 std::unordered_map<std::string, std::vector<std::string>> blockingGraph) {
-    if (visited.size() != 0 & start == target) {
+    if (visited.size() != 0 && start == target) {
         return true;
     }
     for (auto const& transactionBlocked : blockingGraph.at(start)) {
@@ -68,11 +70,20 @@ void TransactionManager::executeNextTransaction(std::string tran) {
 
     // get first transaction from wating queue of the variable which the transaction has accessed before
     for (auto const& var : curTran.getFreeVars()) {
-        Transaction* nextTran = var.getLock().getTransactionFromWaitingQueue();
-        Instruction nextIns = instructionQueue.at(nextTran->name);
+        vector<site*> sites = DM.getVarSiteList()[var];
+        variable* v;
+        for(auto s : sites) {
+            v = s->getVariable(var);
+            break;
+        }
+        Transaction* nextTran = v->getLock()->getTransactionFromWaitingQueue();
+        auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextTran->name);
+        Instruction nextIns = *it;
+        //Instruction nextIns = instructionQueue.at(nextTran->name);
 
         if (nextTran == nullptr) {
-            instructionQueue.erase(nextIns);
+            auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextIns);
+            instructionQueue.erase(it);
             continue;
         }
         if (nextIns.type == "R") {
@@ -82,8 +93,9 @@ void TransactionManager::executeNextTransaction(std::string tran) {
         }
         // erase instruction when completed successfully
         if (isSuccessful) {
-            var->removeTransactionFromWaitingQueue(nextTran);
-            instructionQueue.erase(nextIns);
+            v->getLock()->removeTransactionFromWaitingQueue(nextTran);
+            auto it = std::find(instructionQueue.begin(), instructionQueue.end(), nextIns);
+            instructionQueue.erase(it);
         }
     }
 }
@@ -131,7 +143,7 @@ bool TransactionManager::read(std::string tran, std::string var) {
         isSuccessful = TransactionManager::readRO(tran, var);
     }
     // non read-only
-    res = DM.read(&tran, varID);
+    res = DM.read(&transaction, varID);
 
     if (res.rfind("T")) {
         transaction.printLockConflict(tran);
@@ -151,7 +163,7 @@ bool TransactionManager::read(std::string tran, std::string var) {
         std::unordered_set<int> accessedSites = transaction.getOwnedLocks().at(varID);
         // update SiteAccessedList
         for (auto const& site: accessedSites){
-            transaction.getSiteAccessedList().insert(site);
+            transaction.getSiteAccessedList().push_back(site);
         }
         isSuccessful = true;
     }
@@ -164,7 +176,7 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
     Transaction transaction = transactionList.at(tran);
     varID = std::stoi(var.substr(1));
 
-    std::string res = DM.write(&tran, varID, val);
+    std::string res = DM.write(&transaction, varID);
     bool isSuccessful = false;
 
     if (res.rfind("T")) {
@@ -179,12 +191,13 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
         std::unordered_set<int> accessedSites = transaction.getOwnedLocks().at(varID);
         // update SiteAccessedList
         for (auto const& site: accessedSites){
-            transaction.getSiteAccessedList().insert(site);
+            transaction.getSiteAccessedList().push_back(site);
         }
         isSuccessful = true;
     }
     // update varValList
-    transaction.getVarValueList().at(varID).push_back(val);
+    transaction.varValueList[varID] = val;
+    //transaction.getVarValueList()[varID] = val;
 
     return isSuccessful;
 }
@@ -210,7 +223,7 @@ void TransactionManager::abort(std::string tran) {
     
     Transaction transaction = transactionList.at(tran);
     // release locks hold by the transaction
-    transaction.getFreeVars() = DM.releaseLocks(tran);
+    transaction.getFreeVars() = DM.releaseLocks(&transaction);
     // update transaction list
     transactionList.erase(tran);
     // update blocking graph
@@ -222,13 +235,15 @@ void TransactionManager::abort(std::string tran) {
 
 // todo why no match declaration?
 void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> varValueList) {
-    bool success = DM.commit(t, varValueList);
+    pair<bool, unordered_set<int>> res = DM.commit(t);
+    bool success = res.first;
     if (success) {
         std::cout << t->name << " commits" << std::endl;
 
         Transaction transaction = transactionList.at(t->name);
+        //WHY RELEASE LOCKS TWICE???
         // release locks hold by the transaction
-        transaction.getFreeVars() = DM.releaseLocks(t->name);
+        //transaction.getFreeVars() = res.second;
         // update transaction list
         std::string tran = t->name;
         transactionList.erase(tran);
@@ -237,7 +252,7 @@ void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> var
         // execute next transaction from waiting queue
         TransactionManager::executeNextTransaction(tran);
         // release locks hold by transaction
-        std::unordered_set<int> freeVars = DM.releaseLocks(tran);
+        //std::unordered_set<int> freeVars = DM.releaseLocks(tran);
     } else {
         std::cout << t->name << " commits failed" << std::endl;
     }
@@ -252,8 +267,8 @@ void TransactionManager::fail(int siteID, int timeStamp) {
         if (transaction.isReadOnly || transaction.toBeAborted) {
             continue;
         }
-        if (std::find(transaction.getSiteAccessedList().begin(), transaction.getSiteAccessedList().end(),
-            siteID)!=transaction.getSiteAccessedList().end()) {
+        if ( std::find(transaction.getSiteAccessedList().begin(), transaction.getSiteAccessedList().end(),
+        siteID) != transaction.getSiteAccessedList().end()) {
                 transaction.toBeAborted = true;
         }
     }
@@ -282,5 +297,6 @@ void TransactionManager::enqueueWriteInstruction(std::string tran, std::string v
 
 void TransactionManager::updateVarAccessedList(std::string tran, std::string var) {
     Transaction transaction = transactionList.at(tran);
-    transaction.getVarAccessedList().push_back(var);
+    int varID = std::stoi(var.substr(1));
+    transaction.getVarAccessedList().push_back(varID);
 }

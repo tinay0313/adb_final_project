@@ -3,7 +3,6 @@
  */
 
 #include "Transaction.h"
-#include "DataManager.h"
 
 Transaction::Transaction(std::string name, bool isReadOnly, int startTime):
     name(name),

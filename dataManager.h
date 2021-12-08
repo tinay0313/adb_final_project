@@ -60,7 +60,7 @@ public:
 
     /* commit a transaction
         2nd param is MAP_OF_VARIABLE_IDX_AND_VALUES_THAT_SHOULD_BE_UPDATED_TO_EACH_VARIABLE */
-    bool commit(Transaction* t);
+    pair<bool, unordered_set<int>> commit(Transaction* t);
 
     bool checkValidReadWrite(Transaction* t, int var_id, unordered_set<int>& sites_to_verify);
     

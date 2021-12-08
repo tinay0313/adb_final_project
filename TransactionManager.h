@@ -10,6 +10,7 @@
 
 
 #include "Transaction.h"
+#include "dataManager.h"
 
 
 class TransactionManager {

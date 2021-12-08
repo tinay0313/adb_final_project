@@ -260,7 +260,7 @@ string dataManager::write(Transaction* t, int var_id)
 }
 
 /* commit a transaction. Returns true if successfully commit and false otherwise */
-bool dataManager::commit(Transaction* t)
+pair<bool, unordered_set<int>> dataManager::commit(Transaction* t)
 {
     bool commit_success = true;
     //check that transaction can still read and write to all variables it obtained
@@ -280,8 +280,8 @@ bool dataManager::commit(Transaction* t)
         }
     }
     //release all locks held by t since t is ending
-    releaseLocks(t);
-    return commit_success;
+    unordered_set<int> freeVars = releaseLocks(t);
+    return {commit_success, freeVars};
 }
 
 bool dataManager::checkValidReadWrite(Transaction* t, int var_id, unordered_set<int>& sites_to_verify) {
