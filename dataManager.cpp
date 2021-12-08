@@ -84,6 +84,10 @@ void dataManager::generateVarValCache(Transaction* t)
             map<int, variable*> variables = s->getAllVariables();
             for(auto it = variables.begin(); it != variables.end(); ++it) {
                 int var_id = it->first;
+                if(t->getVarValCache().count(var_id)) {
+                    //already cached variable value at some other valid site
+                    continue;
+                }
                 if(s->isVariableValidForRead(var_id)) {
                     int value = variables[var_id]->getValue();
                     t->getVarValCache()[var_id] = value;
@@ -125,6 +129,7 @@ string dataManager::read(Transaction* t, int var_id)
         unordered_set<site*> read_from;
         unordered_set<site*> wait_from;
         bool conflict = false;
+        string conflict_transaction;
         int num_sites = sites.size();
         int down_sites = 0;
         int invalid_read_sites = 0;
@@ -163,11 +168,13 @@ string dataManager::read(Transaction* t, int var_id)
                 }
                 //write lock held by transaction that is not t so lock conflict
                 //and t has to wait
+                Transaction* conf = *(s->getLockOwners(var_id).begin());
+                conflict_transaction = conf->name;
                 s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
                 conflict = true;
             }
         }
-        if(conflict) return "CONFLICT";
+        if(conflict) return conflict_transaction;
         if(down_sites == num_sites) {
             for(auto s : wait_from) {
                 s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
@@ -209,6 +216,7 @@ string dataManager::write(Transaction* t, int var_id)
     unordered_set<site*> write_to;
     unordered_set<site*> wait_from;
     bool conflict = false;
+    string conflict_transaction;
     int num_sites = sites.size();
     int down_sites = 0;
     int valid_write_sites = 0;
@@ -234,14 +242,15 @@ string dataManager::write(Transaction* t, int var_id)
                 write_to.insert(s);
                 continue;
             }
+            Transaction* conf = *(s->getLockOwners(var_id).begin());
+            conflict_transaction = conf->name;
             s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
             conflict = true;
-            //return "CONFLICT";
         }
         //can obtain write lock at site s
         write_to.insert(s);
     }
-    if(conflict) return "CONFLICT";
+    if(conflict) return conflict_transaction;
     //if all sites that store the variable are down then didn't write to any site
     if(num_sites == down_sites) {
         for(auto s : wait_from) {
