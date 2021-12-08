@@ -86,7 +86,7 @@ void dataManager::generateVarValCache(Transaction* t)
                 int var_id = it->first;
                 if(s->isVariableValidForRead(var_id)) {
                     int value = variables[var_id]->getValue();
-                    t->varValCache[var_id] = value;
+                    t->getVarValCache()[var_id] = value;
                 }
             }
         }

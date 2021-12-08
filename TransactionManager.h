@@ -32,16 +32,13 @@ class TransactionManager {
         int timeStamp;
         /* ID  of variable, 20 refers to x20 */
         int varID;
-        /* SiteVariableList[i] has a vector of all variables saved at site i */ 
-        std::vector<std::vector<variable> > siteVariableList;
-        /* record the failure history of every site. */ 
-        std::vector<std::vector<int> > failureHistory;
         /* key is the transaction name and the value are the transactions that are waiting For key’s data lock */
         std::unordered_map<std::string, std::vector<std::string> > blockingGraph;
-        // turn into transaction list, no need to record age  
+        /* keep information of active transactions */
         std::unordered_map<std::string, Transaction> transactionList;
         /* record read/write instructions to be executed */
         std::vector<Instruction> instructionQueue;
+
 
         /* detects deadlock by checking if there is a cycle in the blockingGraph Returns transaction that has to be aborted or nullptr otherwise */
         /* True : A deadlock is detected, the youngest transaction will be aborted.*/
@@ -49,8 +46,8 @@ class TransactionManager {
         /* detect deadlock by dfs */
         bool helper(std::string start, std::string target, std::unordered_set<std::string> visited,
                     std::unordered_map<std::string, std::vector<std::string>> blockingGraph);
-        /* execute instruction queue one more time if there is a deadlock detected */
-        void executeInstructionQueue();
+        /* execute transaction from the waiting queue */
+        void executeNextTransaction(std::string tran);
         
         /* add an edge to the blockingGraph*/
         void addEdge(std::string trans1, std::string trans2);
@@ -59,10 +56,8 @@ class TransactionManager {
 
         /* Begin a transactione*/
         void begin(std::string tran, bool isReadOnly, int startTime);
-        /* enqueue read/write enqueueReadInstruction to instructionQueue */
-        void enqueueReadInstruction(std::string tran, std::string var);
-        void enqueueWriteInstruction(std::string tran, std::string var, int val);
-        void read(std::string tran, std::string var);
+        bool readRO(std::string tran, std::string var);
+        bool read(std::string tran, std::string var);
         /*
         1. write to all up sites if write lock can be acquired
         2. if cannot get all write locks, cannot write
@@ -83,9 +78,15 @@ class TransactionManager {
         3. update owners
         4. prints transaction name upon commit
         */
-        void commit(Transaction* t, unordered_map<int, int> variableValueMap);
+        void commit(Transaction* t, std::unordered_map<int, int> varValueList);
         void fail(int siteID, int timeStamp);
         void recover(int siteID);
+        /* enqueue read/write enqueueReadInstruction to instructionQueue */
+        void enqueueROInstruction(std::string tran, std::string var);
+        void enqueueReadInstruction(std::string tran, std::string var);
+        void enqueueWriteInstruction(std::string tran, std::string var, int val);
+        /* update varAccessedList*/
+        void updateVarAccessedList(std::string tran, std::string var);
 };
 
 

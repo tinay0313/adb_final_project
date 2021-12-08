@@ -6,6 +6,8 @@
 #define TRANSACTION
 
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <map>
 #include <iostream>
@@ -13,6 +15,20 @@
 #include "dataManager.h"
 
 class Transaction {
+    private:
+
+        /* for readOnly transaction */
+        std::unordered_map<int, int> varValCache; // varID : val
+        /* variable has accessed by the transaction before  */
+        std::vector<int> varAccessedList;
+        /* saves all the the sites the transaction had accessed */
+        std::unordered_set<int> siteAccessedList;
+        /* save the value the transaction want to write to the variable */
+        std::unordered_map<int, int> varValueList;
+        /* key is var_id, value is all site(s) transaction successfully obtained locks for var_id */
+        std::unordered_map<int, std::unordered_set<int>> ownedLocks;
+        /* list of variables that become free after locks hold by the transaction are released */
+        std::unordered_set<int> freeVars;
 
     public:
 
@@ -35,14 +51,29 @@ class Transaction {
         /* key is var_id, value is all site(s) transaction successfully obtained locks for var_id */
         std::unordered_map<int, unordered_set<int>> ownedLocks;
 
-        /* get varValueList*/
+
+        /* get varValCache*/
+        std::unordered_map<int, int> getVarValCache() { return varValCache; }
+        /* get varAccessedList*/
+        std::vector<int> getVarAccessedList();
+        /* get siteAccessed */
         std::vector<int> getSiteAccessedList();
         /* get varValueList*/
-        std::unordered_map<int, int> getVarValueList();
+        std::unordered_map<int, int> getVarValueList() { return varValueList; }
+        /* get ownedLocks*/
+        std::unordered_map<int, std::unordered_set<int>> getOwnedLocks() {return ownedLocks; }
+        /* get freeVars*/
+        std::unordered_map<int, std::unordered_set<int>> getFreeVars();
+        
+
         /* prints message every time transaction waits because of a lock conflict */
         void printLockConflict(std::string tran);
         /* prints message every time transaction waits because of a down site */
         void printDownSite(std::string tran);
+        /* prints message every time transaction waits because of a invalid var */
+        void printInvalid(std::string tran);
+        /* prints message every time transaction waits because of a down site & invalid var */
+        void printDownInvalid(std::string tran);
 };
 
 
