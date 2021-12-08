@@ -84,6 +84,10 @@ void dataManager::generateVarValCache(Transaction* t)
             map<int, variable*> variables = s->getAllVariables();
             for(auto it = variables.begin(); it != variables.end(); ++it) {
                 int var_id = it->first;
+                if(t->getVarValCache().count(var_id)) {
+                    //already cached variable value at some other valid site
+                    continue;
+                }
                 if(s->isVariableValidForRead(var_id)) {
                     int value = variables[var_id]->getValue();
                     t->getVarValCache()[var_id] = value;
