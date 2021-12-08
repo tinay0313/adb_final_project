@@ -83,7 +83,6 @@ class TransactionManager {
         void fail(int siteID, int timeStamp);
         void recover(int siteID);
         /* enqueue read/write enqueueReadInstruction to instructionQueue */
-        void enqueueROInstruction(std::string tran, std::string var);
         void enqueueReadInstruction(std::string tran, std::string var);
         void enqueueWriteInstruction(std::string tran, std::string var, int val);
         /* update varAccessedList*/

@@ -39,7 +39,6 @@ Parser::Parser(std::string *infile):
         if (curLine.rfind("beginRO", 0) == 0) {  // won't affetc waiting queue
             tran = tokens.at(1);
             TM.begin(tran, true, TM.timeStamp);
-            TM.enqueueROInstruction(tran, var);
         } else if (curLine.rfind("begin", 0) == 0) {
             tran = tokens.at(1);
             TM.begin(tran, false, TM.timeStamp);
