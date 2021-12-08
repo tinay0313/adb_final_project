@@ -16,7 +16,7 @@ Site 2 is running now
 end(T2)
 T2 commits failed
 end(T1)
-Sites 10, 7, 9, 4, 3, 6, 8, 5, 1 were affected by this transaction
+Sites 9, 4, 8, 7, 5, 3, 6, 10, 1 were affected by this transaction
 Transaction T1 changed variable 4's value to 91
 T1 commits
 dump()

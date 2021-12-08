@@ -10,7 +10,7 @@ end(T1)
 T1 commits
 x2 can be updated to 10 after commit.
 end(T2)
-Sites 9, 4, 10, 5, 8, 7, 6, 2, 3, 1 were affected by this transaction
+Sites 10, 9, 4, 7, 6, 8, 5, 2, 3, 1 were affected by this transaction
 Transaction T2 changed variable 2's value to 10
 T2 commits
 dump()

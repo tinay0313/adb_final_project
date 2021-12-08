@@ -11,7 +11,7 @@ x3: 30
 R(T1,x5)
 x5: 50
 end(T2)
-Sites 10, 8, 7, 1, 4, 6, 5, 9, 3 were affected by this transaction
+Sites 8, 7, 6, 5, 10, 4, 9, 3, 1 were affected by this transaction
 Transaction T2 changed variable 8's value to 88
 T2 commits
 recover(2)

@@ -1,22 +1,21 @@
 begin(T1)
-begin(T2)
+beginRO(T2)
 W(T1,x1,101) 
 x1 can be updated to 101 after commit.
-W(T2,x2,202)
-x2 can be updated to 202 after commit.
+R(T2,x2)
+x2: 20
 W(T1,x2,102) 
-Transaction: T1 waits because of a lock conflict.
-W(T2,x1,201)
-Transaction: T2 waits because of a lock conflict.
-T2 aborts
 x2 can be updated to 102 after commit.
-Deadlock detected.
-end(T1)
-Sites 8, 3, 7, 6, 10, 4, 9, 2, 5, 1 were affected by this transaction
+R(T2,x1)
+x1: 10
+end(T1) 
+Sites 10, 8, 7, 6, 9, 2, 4, 5, 3, 1 were affected by this transaction
 Transaction T1 changed variable 2's value to 102
 Sites 2 were affected by this transaction
 Transaction T1 changed variable 1's value to 101
 T1 commits
+end(T2)
+T2 commits
 dump()
 site 1 - x2: 102, x4: 40, x6: 60, x8: 80, x10: 100, x12: 120, x14: 140, x16: 160, x18: 180, x20: 200
 site 2 - x1: 101, x2: 102, x4: 40, x6: 60, x8: 80, x10: 100, x11: 110, x12: 120, x14: 140, x16: 160, x18: 180, x20: 200

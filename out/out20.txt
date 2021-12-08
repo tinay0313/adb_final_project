@@ -10,7 +10,7 @@ begin(T3)
 W(T3,x2,100)
 x2 can be updated to 100 after commit.
 end(T3)
-Sites 10, 9, 8, 7, 6, 2, 5, 4, 3 were affected by this transaction
+Sites 7, 2, 10, 5, 9, 6, 8, 4, 3 were affected by this transaction
 Transaction T3 changed variable 2's value to 100
 T3 commits
 recover(1)

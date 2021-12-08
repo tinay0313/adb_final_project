@@ -222,7 +222,8 @@ string dataManager::write(Transaction* t, int var_id, int value)
             if(s->getLockOwners(var_id).size() == 1 && s->getLockOwners(var_id).count(t->name)) {
                 //if previous read or write lock held by transaction t itself and no transaction waiting
                 //in waiting queue then can still write to the variable
-                if(s->getLockTable()[var_id]->getWaitingQueue().empty()) {
+                if(s->getLockTable()[var_id]->getWaitingQueue().empty() ||
+                (s->getLockTable()[var_id]->getTransactionFromWaitingQueue()->name == t->name)) {
                     write_to.insert(s);
                     continue;
                 } else {

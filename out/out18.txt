@@ -32,7 +32,7 @@ Transaction T4 changed variable 5's value to 40
 T4 commits
 x4 can be updated to 30 after commit.
 end(T3)
-Sites 9, 8, 3, 5, 7, 2, 4, 10, 6, 1 were affected by this transaction
+Sites 10, 8, 7, 9, 6, 2, 3, 5, 4, 1 were affected by this transaction
 Transaction T3 changed variable 4's value to 30
 T3 commits
 x3 can be updated to 20 after commit.
@@ -42,7 +42,7 @@ Transaction T2 changed variable 3's value to 20
 T2 commits
 x2 can be updated to 10 after commit.
 end(T1)
-Sites 9, 8, 3, 5, 7, 2, 4, 10, 6, 1 were affected by this transaction
+Sites 10, 8, 7, 9, 6, 2, 3, 5, 4, 1 were affected by this transaction
 Transaction T1 changed variable 2's value to 10
 T1 commits
 dump()

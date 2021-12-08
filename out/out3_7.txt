@@ -16,7 +16,7 @@ x4 can be updated to 91 after commit.
 end(T2)
 T2 commits failed
 end(T1)
-Sites 10, 9, 4, 8, 3, 7, 5, 2, 6, 1 were affected by this transaction
+Sites 9, 4, 8, 7, 10, 6, 5, 2, 3, 1 were affected by this transaction
 Transaction T1 changed variable 4's value to 91
 T1 commits
 dump()

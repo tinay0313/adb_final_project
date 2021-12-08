@@ -19,7 +19,7 @@ Site 3 is running now
 R(T2,x3)
 x3: 30
 end(T2)
-Sites 8, 6, 5, 10, 2, 7, 9, 1 were affected by this transaction
+Sites 8, 6, 10, 5, 9, 7, 2, 1 were affected by this transaction
 Transaction T2 changed variable 8's value to 88
 T2 commits
 dump()

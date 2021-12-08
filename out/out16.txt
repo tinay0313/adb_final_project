@@ -8,12 +8,12 @@ x4 can be updated to 44 after commit.
 R(T3,x4)
 Transaction: T3 waits because of a lock conflict.
 end(T2)
-Sites 9, 10, 5, 6, 8, 4, 7, 3, 2, 1 were affected by this transaction
+Sites 10, 8, 9, 7, 6, 1, 5, 3, 2, 4 were affected by this transaction
 Transaction T2 changed variable 4's value to 44
 T2 commits
 x4: 44
 end(T3)
-Sites 9, 10, 5, 6, 8, 4, 7, 3, 2, 1 were affected by this transaction
+Sites 10, 8, 9, 7, 6, 1, 5, 3, 2, 4 were affected by this transaction
 Transaction T3 changed variable 2's value to 22
 T3 commits
 R(T1,x2)

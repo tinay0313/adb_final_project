@@ -8,17 +8,17 @@ Transaction: T2 waits because of a lock conflict.
 W(T1,x2,10)
 Transaction: T1 waits because of a lock conflict.
 end(T3)
-Sites 7, 6, 5, 3, 9, 2, 10, 8, 4, 1 were affected by this transaction
+Sites 9, 8, 3, 10, 5, 6, 1, 4, 7, 2 were affected by this transaction
 Transaction T3 changed variable 2's value to 10
 T3 commits
 x2 can be updated to 10 after commit.
 end(T2)
-Sites 7, 6, 5, 3, 9, 2, 10, 8, 4, 1 were affected by this transaction
+Sites 9, 8, 3, 10, 5, 6, 1, 4, 7, 2 were affected by this transaction
 Transaction T2 changed variable 2's value to 10
 T2 commits
 x2 can be updated to 10 after commit.
 end(T1)
-Sites 7, 6, 5, 3, 9, 2, 10, 8, 4, 1 were affected by this transaction
+Sites 9, 8, 3, 10, 5, 6, 1, 4, 7, 2 were affected by this transaction
 Transaction T1 changed variable 2's value to 10
 T1 commits
 dump()

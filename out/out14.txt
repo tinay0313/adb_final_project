@@ -1,15 +1,24 @@
 begin(T1)
 begin(T2)
-R(T1,x2)
-x2: 20
-R(T2,x2)
-x2: 20
+begin(T3)
+W(T3,x2,10)
+x2 can be updated to 10 after commit.
+W(T1,x2,10)
+Transaction: T1 waits because of a lock conflict.
+W(T2,x2, 10)
+Transaction: T2 waits because of a lock conflict.
+end(T3)
+Sites 10, 9, 4, 1, 6, 5, 8, 3, 7, 2 were affected by this transaction
+Transaction T3 changed variable 2's value to 10
+T3 commits
+x2 can be updated to 10 after commit.
 end(T1)
+Sites 10, 9, 4, 1, 6, 5, 8, 3, 7, 2 were affected by this transaction
+Transaction T1 changed variable 2's value to 10
 T1 commits
-W(T2,x2,10)
 x2 can be updated to 10 after commit.
 end(T2)
-Sites 10, 9, 4, 8, 6, 3, 7, 2, 5, 1 were affected by this transaction
+Sites 10, 9, 4, 1, 6, 5, 8, 3, 7, 2 were affected by this transaction
 Transaction T2 changed variable 2's value to 10
 T2 commits
 dump()

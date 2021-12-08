@@ -42,7 +42,6 @@ Parser::Parser(std::string *infile):
         while (TM.detectDeadlock()) {
             std::cout << "Deadlock detected." << std::endl;
         }
-        std::cout << curLine << std::endl;
         //  pass intructions to transaction manager
         if (curLine.rfind("beginRO", 0) == 0) {  // won't affetc waiting queue
             tran = tokens.at(1);
