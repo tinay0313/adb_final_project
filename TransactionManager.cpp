@@ -118,8 +118,12 @@ void TransactionManager::deleteEdge(std::string trans1)  {
 
 /* execution */
 void TransactionManager::begin(std::string tran, bool isReadOnly, int startTime) {
+    Transaction transaction = Transaction(tran, isReadOnly, startTime);
+    if (isReadOnly) {
+        DM.generateVarValCache(&transaction);
+    }
     // add new transaction
-    transactionList.insert({ tran, Transaction(tran, isReadOnly, startTime) });
+    transactionList.insert({ tran, transaction });
 }
 
 
