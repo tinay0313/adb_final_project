@@ -14,7 +14,6 @@
 
 class Transaction {
     private:
-
         /* for readOnly transaction */
         std::unordered_map<int, int> varValCache; // varID : val
         /* variable has accessed by the transaction before  */

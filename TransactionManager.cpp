@@ -23,18 +23,18 @@ TransactionManager::TransactionManager():
 bool TransactionManager::detectDeadlock() {
 
     std::string youngest;
-    int younestStartTime = INT_MAX;
+    int youngestStartTime = INT_MAX;
 
     for (auto const& blocking : blockingGraph) {
         std::unordered_set<std::string> visited;
         std::string start = blocking.first;
         // dfs
         if (TransactionManager::helper(start, start, visited, blockingGraph)) {
-            Transaction transaction = transactionList[start];
+            Transaction transaction = transactionList.at(start);
             // get the youngest
-            if (transaction.startTime < younestStartTime) {
+            if (transaction.startTime < youngestStartTime) {
                 youngest = start;
-                younestStartTime = transaction.startTime;
+                youngestStartTime = transaction.startTime;
             }
         }
     }
@@ -58,8 +58,8 @@ bool TransactionManager::helper(std::string start, std::string target, std::unor
                 return true;
             }
         }
-    return false;
     }
+    return false;
 }
 
 
@@ -237,6 +237,7 @@ void TransactionManager::abort(std::string tran) {
 void TransactionManager::commit(Transaction* t, std::unordered_map<int, int> varValueList) {
     pair<bool, unordered_set<int>> res = DM.commit(t);
     bool success = res.first;
+    //save free vars?
     if (success) {
         std::cout << t->name << " commits" << std::endl;
 
