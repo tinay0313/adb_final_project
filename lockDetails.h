@@ -17,7 +17,7 @@ class lockDetails
 {
     /* 0 is free, 1 is read lock, 2 is write lock */
     int type;
-    unordered_set<Transaction *> owners;
+    unordered_set<string> owners;
     vector<Transaction *> waitingQueue;
 
 public:
@@ -28,7 +28,7 @@ public:
     int getType() { return type; }
 
     /* returns owners */
-    unordered_set<Transaction*> getOwners() { return owners; }
+    unordered_set<string> getOwners() { return owners; }
 
     /* returns waiting queue */
     vector<Transaction*> getWaitingQueue() { return waitingQueue; }
@@ -38,10 +38,10 @@ public:
 
     /* adds a lock indicated by lockType to the variable and indicate that transaction
        t is the owner */
-    void addLock(Transaction* t, int lockType);
+    void addLock(string t, int lockType);
 
     /* removes a lock to the variable held by transaction t */
-    void removeLock(Transaction* t);
+    void removeLock(string t);
 
     /* set lock type to free (0) */
     void freeLock() { type = 0; }

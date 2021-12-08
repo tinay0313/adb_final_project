@@ -25,13 +25,15 @@ bool TransactionManager::detectDeadlock() {
     int youngestStartTime = INT_MAX;
     if(blockingGraph.empty()) std::cout << "empty block graph" << std::endl;
     for (auto const& blocking : blockingGraph) {
-        std::cout << blocking.first << std::endl;
         std::unordered_set<std::string> visited;
         std::string start = blocking.first;
-        std::cout << start << std::endl;
+        
+        std::cout << "start edge: " << start << std::endl;
+        
         // dfs
         if (TransactionManager::helper(start, start, visited, blockingGraph)) {
             Transaction transaction = transactionList.at(start);
+            std::cout << transaction.name << std::endl;
             // get the youngest
             if (transaction.startTime < youngestStartTime) {
                 youngest = start;
@@ -49,22 +51,26 @@ bool TransactionManager::detectDeadlock() {
 }
 
 
-bool TransactionManager::helper(std::string start, std::string target, std::unordered_set<std::string> visited,
+bool TransactionManager::helper(std::string start, std::string target, std::unordered_set<std::string>& visited,
                                 std::unordered_map<std::string, std::vector<std::string>> blockingGraph) {
+    std::cout << "visited.size()= " << visited.size() << std::endl;
     if (visited.size() != 0 && start == target) {
+        std::cout << "returning true from helper" << std::endl;
         return true;
     }
     for (auto const& transactionBlocked : blockingGraph.at(start)) {
+        std::cout << "blocked transaction: " << transactionBlocked << std::endl;
         if (visited.find(transactionBlocked) == visited.end()) {
+            std::cout << "didn't find blocked transaction in visited: " << transactionBlocked << std::endl;
             visited.insert(transactionBlocked);
             if (TransactionManager::helper(transactionBlocked, target, visited, blockingGraph)) {
+                std::cout << "returning true from helper" << std::endl;
                 return true;
             }
         }
     }
     return false;
 }
-
 
 void TransactionManager::executeNextTransaction(std::string tran) {
     Transaction curTran = transactionList.at(tran);
@@ -109,7 +115,8 @@ void TransactionManager::executeNextTransaction(std::string tran) {
 
 /* modify blockingGraph */
 void TransactionManager::addEdge(std::string trans1, std::string trans2) {
-    blockingGraph.at(trans1).push_back(trans2);
+    blockingGraph[trans1].push_back(trans2);
+    std::cout << trans1 << " is blocking " << trans2 << endl;
 }
 
 
@@ -197,6 +204,7 @@ bool TransactionManager::write(std::string tran, std::string var, int val) {
         transaction.printLockConflict(tran);
         // update blockingGraph
         TransactionManager::addEdge(res, tran);
+        std::cout << "added edge" << std::endl;
     } else if (res == "DOWN") {
         std::cout << "founud down: " << res << std::endl;
         transaction.printDownSite(tran);

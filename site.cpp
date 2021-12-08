@@ -36,6 +36,11 @@ site::site(int id)
 }
 
 // site member functions
+unordered_set<string> site::getLockOwners(int id)
+{
+    return this->lockTable[id]->getOwners();
+}
+
 /* fails the site and clear the lock table. Adds timestamp to failedTimes vector */
 void site::failSite(int timestamp)
 {

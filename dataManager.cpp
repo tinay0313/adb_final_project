@@ -143,14 +143,13 @@ string dataManager::read(Transaction* t, int var_id)
             read_from.insert(s);
         } else {
             //variable is write-locked
-            if(s->getLockOwners(var_id).count(t)) {
+            if(s->getLockOwners(var_id).count(t->name)) {
                 //write lock held by transaction t itself so can still read the value
                 return to_string(s->getVariable(var_id)->getValue());
             }
             //write lock held by transaction that is not t so lock conflict
             //and t has to wait
-            Transaction* conf = *(s->getLockOwners(var_id).begin());
-            conflict_transaction = conf->name;
+            conflict_transaction = *(s->getLockOwners(var_id).begin());
             s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
             conflict = true;
         }
@@ -178,7 +177,7 @@ string dataManager::read(Transaction* t, int var_id)
         //add lock to transaction's successfully obtained lock list
         //list will have var_id and site_num
         t->ownedLocks[var_id].insert(s->getSiteId());
-        s->lockVariable(var_id, t, 1);
+        s->lockVariable(var_id, t->name, 1);
     }
     return to_string(s->getVariable(var_id)->getValue());
 }
@@ -191,7 +190,7 @@ string dataManager::read(Transaction* t, int var_id)
    of the variable */
 string dataManager::write(Transaction* t, int var_id, int value)
 {
-    cout << "entered dm wrte" << endl;
+    cout << t->name << " entered dm write" << endl;
     vector<site*> sites = this->varSiteList[var_id];
     unordered_set<site*> write_to;
     unordered_set<site*> wait_from;
@@ -209,22 +208,30 @@ string dataManager::write(Transaction* t, int var_id, int value)
         //if already determined that there is lock conflict then just add t
         //to waiting queue
         if(conflict) {
+            cout << "adding " << t->name << " to site " << s->getSiteId() << " waitQ for var " << var_id << endl;
             s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
             continue;
         }
         //if lock wasn't previously free then can't write to any of the site
         //and t has to wait
         if(!s->isVariableFree(var_id)) {
-            if(s->getLockOwners(var_id).size() == 1 && s->getLockOwners(var_id).count(t)) {
+            cout << "at site " << s->getSiteId() << ", var " << var_id << " has lock type " << s->getLockType(var_id);
+            for(auto lockOwner : s->getLockOwners(var_id)) {
+                cout << " by lockOwner: " << lockOwner << endl;
+            }
+            if(s->getLockOwners(var_id).size() == 1 && s->getLockOwners(var_id).count(t->name)) {
+                cout << s->getLockOwners(var_id).count(t->name) << endl;
                 //if previous read or write lock held by transaction t itself
                 //then can still write to the variable
                 write_to.insert(s);
                 continue;
             }
-            Transaction* conf = *(s->getLockOwners(var_id).begin());
-            conflict_transaction = conf->name;
+            conflict_transaction = *(s->getLockOwners(var_id).begin());
+            cout << "adding " << t->name << " to site " << s->getSiteId() << " waitQ for var " << var_id << endl;
             s->getLockTable()[var_id]->addTransactionToWaitingQueue(t);
             conflict = true;
+            if(conflict) cout << "conf" << endl;
+            continue;
         }
         //can obtain write lock at site s
         write_to.insert(s);
@@ -243,7 +250,15 @@ string dataManager::write(Transaction* t, int var_id, int value)
         //list will have var_id and site_num
         cout << "owned" << s->getSiteId() << endl;
         t->ownedLocks[var_id].insert(s->getSiteId());
-        s->lockVariable(var_id, t, 2);
+        s->lockVariable(var_id, t->name, 2);
+    }
+
+    for(auto it = t->ownedLocks.begin(); it != t->ownedLocks.end(); ++it) {
+        cout << it->first << ": ";
+        for(auto se : it->second) {
+            cout << se << ", ";
+        }
+        cout << endl;
     }
     t->varValueList[var_id] = value;
     cout << "almost done dm write" << ", val: " << t->varValueList[var_id] << endl;
@@ -281,7 +296,7 @@ bool dataManager::checkValidReadWrite(Transaction* t, int var_id, unordered_set<
     for(auto site_id : sites_to_verify) {
         site* s = this->sites[site_id - 1];
         if(s->getIsRunning()) {
-            if(!s->getLockOwners(var_id).count(t)) {
+            if(!s->getLockOwners(var_id).count(t->name)) {
                 //if transaction t doesn't own a lock for var_id at site s
                 //and should've owned that lock then transaction fails
                 //this'll happen if t obtained lock at site s and then
@@ -348,7 +363,7 @@ unordered_set<int> dataManager::releaseLocks(Transaction* t)
         bool isFree = true;
         for(auto s : sites) {
             if(s->getIsRunning()) {
-                s->unlockVariable(var_id, t);
+                s->unlockVariable(var_id, t->name);
                 if(!s->isVariableFree(var_id)) {
                     //variable should now be free at all sites it is stored at
                     isFree = false;

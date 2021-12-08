@@ -17,14 +17,15 @@ lockDetails::lockDetails()
 //lockDetails member functions
 /* adds a lock indicated by lockType to the variable and indicate that transaction
    trans is the owner */
-void lockDetails::addLock(Transaction* t, int lockType)
+void lockDetails::addLock(string t, int lockType)
 {
     this->owners.insert(t);
     this->type = lockType;
+    cout << "added lock: " << t << " of type " << lockType << endl;
 }
 
 /* removes a lock to the variable held by transaction t */
-void lockDetails::removeLock(Transaction* t)
+void lockDetails::removeLock(string t)
 {
     auto it = this->owners.find(t);
     if(it != this->owners.end()) {

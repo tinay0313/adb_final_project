@@ -76,7 +76,7 @@ public:
 	int getLockType(int id) { return lockTable[id]->getType(); }
 
 	/* return owners of lock that is currently enforced on variable as identified by input parameter id */
-	unordered_set<Transaction*> getLockOwners(int id) { return lockTable[id]->getOwners(); }
+	unordered_set<string> getLockOwners(int id);
 
 	/* returns true if variable identified by input parameter id is free and false otherwise */
 	bool isVariableFree(int id) { return getLockType(id) == 0; }
@@ -85,10 +85,10 @@ public:
 	bool isVariableValidForRead(int id) { return canReadVar[id]; }
 
 	/* add a lock to the variable as identified by input parameter id */
-	void lockVariable(int id, Transaction* t, int lockType) { lockTable[id]->addLock(t, lockType); }
+	void lockVariable(int id, string t, int lockType) { lockTable[id]->addLock(t, lockType); }
 
 	/* remove lock imposed on the variable as identified by input parameter id by transaction t */
-	void unlockVariable(int id, Transaction* t) { lockTable[id]->removeLock(t); }
+	void unlockVariable(int id, string t) { lockTable[id]->removeLock(t); }
 
 	/* set variable value to val */
 	void setVariableValue (int id, int val) { variableList[id]->setValue(val); }

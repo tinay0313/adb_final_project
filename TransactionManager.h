@@ -45,7 +45,7 @@ class TransactionManager {
         /* True : A deadlock is detected, the youngest transaction will be aborted.*/
         bool detectDeadlock();
         /* detect deadlock by dfs */
-        bool helper(std::string start, std::string target, std::unordered_set<std::string> visited,
+        bool helper(std::string start, std::string target, std::unordered_set<std::string>& visited,
                     std::unordered_map<std::string, std::vector<std::string>> blockingGraph);
         /* execute transaction from the waiting queue */
         void executeNextTransaction(std::string tran);
