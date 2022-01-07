@@ -1,0 +1,38 @@
+begin(T5)
+begin(T4)
+begin(T3)
+begin(T2)
+begin(T1)
+W(T1,x4,5)
+x4 can be updated to 5 after commit.
+fail(2)
+Site 2 is down now
+W(T2,x4,44)
+Transaction: T2 waits because of a lock conflict.
+recover(2)
+trying to recover
+Site 2 is running now
+W(T3,x4,55)
+Transaction: T3 waits because of a lock conflict.
+W(T4,x4,66)
+Transaction: T4 waits because of a lock conflict.
+W(T5,x4,77)
+Transaction: T5 waits because of a lock conflict.
+end(T1)
+T1 commits failed
+x4 can be updated to 44 after commit.
+end(T2)
+Sites 9, 6, 10, 8, 7, 4, 3, 1, 2, 5 were affected by this transaction
+Transaction T2 changed variable 4's value to 44
+T2 commits
+x4 can be updated to 55 after commit.
+end(T3)
+Sites 9, 6, 10, 8, 7, 4, 3, 1, 2, 5 were affected by this transaction
+Transaction T3 changed variable 4's value to 55
+T3 commits
+x4 can be updated to 66 after commit.
+end(T4)
+Sites 9, 6, 10, 8, 7, 4, 3, 1, 2, 5 were affected by this transaction
+Transaction T4 changed variable 4's value to 66
+T4 commits
+x4 can be updated to 77 after commit.
