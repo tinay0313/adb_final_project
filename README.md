@@ -1,4 +1,4 @@
-# Replicated Concurrency Control and Recovery Database developped for NYU Advanced Database Course
+# Replicated Concurrency Control and Recovery Database
 
 The project supports reading of a single input file and can produce an output file of the results.
 
